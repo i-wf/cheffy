@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Minecraft';
+  src: url('/MinecraftRegular-Bmg3.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@theme {
+  --color-background: #070709;
+  --color-surface: #0e0e14;
+  --color-surface-hover: #14141d;
+  --color-border: #1a1a24;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #9090a0;
+  --color-text-muted: #555566;
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-minecraft: 'Minecraft', monospace;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #070709;
+  color: #ffffff;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #070709;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f1f2e;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #33334d;
+}
+
+/* Selection */
+::selection {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Animations */
+@keyframes rainbow-text {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes glitch-fuzzy {
+  0%, 100% { transform: translate(0, 0) skew(0deg); }
+  20% { transform: translate(-2px, 1px) skew(-2deg); }
+  40% { transform: translate(2px, -1px) skew(2deg); }
+  60% { transform: translate(-1px, -1px) skew(1deg); }
+  80% { transform: translate(1px, 2px) skew(-1deg); }
+}
+
+@keyframes float-sparkle {
+  0%, 100% { transform: translateY(0px) scale(0.9); opacity: 0.6; }
+  50% { transform: translateY(-4px) scale(1.15); opacity: 1; }
+}
+
+@keyframes aurora-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-rainbow {
+  background: linear-gradient(90deg, #ff0055, #ff9900, #ffee00, #00ff66, #00ffff, #9900ff, #ff0055);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbow-text 4s linear infinite;
+}
+
+.animate-fuzzy {
+  animation: glitch-fuzzy 0.25s infinite ease-in-out;
+  text-shadow: 2px 0 #ff0055, -2px 0 #00ffff;
+}
+
+.animate-sparkle-float {
+  animation: float-sparkle 2s ease-in-out infinite;
+}
+
+@keyframes venom-squirm {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.025, 0.98) rotate(0.8deg);
+  }
+  50% {
+    transform: scale(0.985, 1.02) rotate(-0.5deg);
+  }
+  75% {
+    transform: scale(1.015, 1.01) rotate(0.4deg);
+  }
+}
+
+.animate-venom-squirm {
+  animation: venom-squirm 5s ease-in-out infinite;
+}
+
+.sparkle-overlay-bg {
+  position: absolute;
+  inset: -6px -12px;
+  background-image: url('/sparkle_white.gif');
+  background-size: 40px 40px;
+  background-repeat: repeat;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  opacity: 0.65;
+}

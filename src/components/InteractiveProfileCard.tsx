@@ -64,8 +64,10 @@ function getFontFamily(font: FontFamilyType): string {
 
 export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
   const { config } = useCustomization();
-  const cardRef = useRef<HTMLDivElement>(null);
-  const glareRef = useRef<HTMLDivElement>(null);
+  const primaryCardRef = useRef<HTMLDivElement>(null);
+  const primaryGlareRef = useRef<HTMLDivElement>(null);
+  const separatedCardRef = useRef<HTMLDivElement>(null);
+  const separatedGlareRef = useRef<HTMLDivElement>(null);
 
   const [bannerError, setBannerError] = useState(false);
 
@@ -179,71 +181,157 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
     };
   }, [config.description, config.descriptionEffect]);
 
-  // Ultra-smooth 144Hz continuous LERP physics (zero jitter, silky damping)
+  // Ultra-smooth continuous LERP physics with decoupled separated dock card
   useEffect(() => {
-    const card = cardRef.current;
-    const glare = glareRef.current;
-    if (!card) return;
+    const primary = primaryCardRef.current;
+    const primaryGlare = primaryGlareRef.current;
+    const separated = separatedCardRef.current;
+    const separatedGlare = separatedGlareRef.current;
+
+    if (!primary) return;
 
     if (!config.enableCardTilt) {
-      card.style.transform = 'none';
-      if (glare) glare.style.opacity = '0';
+      primary.style.transform = 'none';
+      if (primaryGlare) primaryGlare.style.opacity = '0';
+      if (separated) {
+        separated.style.transform = 'none';
+        if (separatedGlare) separatedGlare.style.opacity = '0';
+      }
       return;
     }
 
-    const target = { x: 0, y: 0, isHovering: false, glareX: 50, glareY: 50 };
-    const current = { x: 0, y: 0, scale: 1, glareOpacity: 0 };
-    let rafId: number;
+    // State for Primary Card
+    const priTarget = { x: 0, y: 0, isHovering: false, glareX: 50, glareY: 50 };
+    const priCurrent = { x: 0, y: 0, scale: 1, glareOpacity: 0 };
 
-    const onMouseMove = (e: MouseEvent) => {
-      const rect = card.getBoundingClientRect();
+    // State for Separated Dock Card (Decoupled Physics)
+    const sepTarget = { x: 0, y: 0, isHovering: false, lift: 0, scale: 1, glareX: 50, glareY: 50 };
+    const sepCurrent = { x: 0, y: 0, lift: 0, scale: 1, glareOpacity: 0 };
+
+    let rafId: number;
+    let clock = 0;
+
+    // Primary Card Mouse Listeners
+    const onPrimaryMouseMove = (e: MouseEvent) => {
+      const rect = primary.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-
       const halfWidth = rect.width / 2;
       const halfHeight = rect.height / 2;
 
-      target.x = (x - halfWidth) / 10;
-      target.y = (y - halfHeight) / 14;
-      target.isHovering = true;
-      target.glareX = (x / rect.width) * 100;
-      target.glareY = (y / rect.height) * 100;
+      priTarget.x = (x - halfWidth) / 10;
+      priTarget.y = (y - halfHeight) / 14;
+      priTarget.isHovering = true;
+      priTarget.glareX = (x / rect.width) * 100;
+      priTarget.glareY = (y / rect.height) * 100;
+
+      // If separated card is not directly hovered, apply a gentle magnetic trailing lag
+      if (!sepTarget.isHovering) {
+        sepTarget.x = priTarget.x * 0.45;
+        sepTarget.y = priTarget.y * 0.45;
+      }
     };
 
-    const onMouseLeave = () => {
-      target.x = 0;
-      target.y = 0;
-      target.isHovering = false;
+    const onPrimaryMouseLeave = () => {
+      priTarget.x = 0;
+      priTarget.y = 0;
+      priTarget.isHovering = false;
+      if (!sepTarget.isHovering) {
+        sepTarget.x = 0;
+        sepTarget.y = 0;
+      }
     };
 
+    primary.addEventListener('mousemove', onPrimaryMouseMove, { passive: true });
+    primary.addEventListener('mouseleave', onPrimaryMouseLeave);
+
+    // Separated Card Mouse Listeners (Independent!)
+    const onSepMouseMove = (e: MouseEvent) => {
+      if (!separated) return;
+      const rect = separated.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const halfWidth = rect.width / 2;
+      const halfHeight = rect.height / 2;
+
+      sepTarget.x = (x - halfWidth) / 8;
+      sepTarget.y = (y - halfHeight) / 8;
+      sepTarget.isHovering = true;
+      sepTarget.lift = -6; // independent hover lift
+      sepTarget.scale = 1.03;
+      sepTarget.glareX = (x / rect.width) * 100;
+      sepTarget.glareY = (y / rect.height) * 100;
+    };
+
+    const onSepMouseLeave = () => {
+      sepTarget.x = 0;
+      sepTarget.y = 0;
+      sepTarget.isHovering = false;
+      sepTarget.lift = 0;
+      sepTarget.scale = 1;
+    };
+
+    if (separated) {
+      separated.addEventListener('mousemove', onSepMouseMove, { passive: true });
+      separated.addEventListener('mouseleave', onSepMouseLeave);
+    }
+
+    // Unified 144Hz Animation Loop
     const animateLoop = () => {
-      current.x += (target.x - current.x) * 0.12;
-      current.y += (target.y - current.y) * 0.12;
-      const targetScale = target.isHovering ? 1.02 : 1;
-      current.scale += (targetScale - current.scale) * 0.12;
+      clock += 0.025;
 
-      card.style.transform = `perspective(1000px) rotateY(${current.x.toFixed(2)}deg) rotateX(${(-current.y).toFixed(2)}deg) scale3d(${current.scale.toFixed(3)}, ${current.scale.toFixed(3)}, ${current.scale.toFixed(3)})`;
+      // Primary Card LERP (crisp 0.12 damping)
+      priCurrent.x += (priTarget.x - priCurrent.x) * 0.12;
+      priCurrent.y += (priTarget.y - priCurrent.y) * 0.12;
+      const priTargetScale = priTarget.isHovering ? 1.02 : 1;
+      priCurrent.scale += (priTargetScale - priCurrent.scale) * 0.12;
 
-      if (glare) {
-        const targetOpacity = target.isHovering ? 0.75 : 0;
-        current.glareOpacity += (targetOpacity - current.glareOpacity) * 0.12;
-        glare.style.opacity = current.glareOpacity.toFixed(2);
-        glare.style.background = `radial-gradient(circle 380px at ${target.glareX.toFixed(1)}% ${target.glareY.toFixed(1)}%, rgba(255,255,255,0.18), transparent 70%)`;
+      primary.style.transform = `perspective(1000px) rotateY(${priCurrent.x.toFixed(2)}deg) rotateX(${(-priCurrent.y).toFixed(2)}deg) scale3d(${priCurrent.scale.toFixed(3)}, ${priCurrent.scale.toFixed(3)}, ${priCurrent.scale.toFixed(3)})`;
+
+      if (primaryGlare) {
+        const targetOpacity = priTarget.isHovering ? 0.75 : 0;
+        priCurrent.glareOpacity += (targetOpacity - priCurrent.glareOpacity) * 0.12;
+        primaryGlare.style.opacity = priCurrent.glareOpacity.toFixed(2);
+        primaryGlare.style.background = `radial-gradient(circle 380px at ${priTarget.glareX.toFixed(1)}% ${priTarget.glareY.toFixed(1)}%, rgba(255,255,255,0.18), transparent 70%)`;
+      }
+
+      // Separated Dock Card LERP (Independent levitation + lagged damping)
+      if (separated) {
+        // Lagged inertia (0.07 damping) gives a heavy floating dock sensation
+        sepCurrent.x += (sepTarget.x - sepCurrent.x) * 0.07;
+        sepCurrent.y += (sepTarget.y - sepCurrent.y) * 0.07;
+        sepCurrent.lift += (sepTarget.lift - sepCurrent.lift) * 0.10;
+        sepCurrent.scale += (sepTarget.scale - sepCurrent.scale) * 0.10;
+
+        // Subtle organic anti-gravity floating undulation
+        const floatWave = Math.sin(clock * 1.5) * 3.5;
+        const floatTiltZ = Math.cos(clock * 1.0) * 0.5;
+
+        separated.style.transform = `perspective(1000px) rotateY(${sepCurrent.x.toFixed(2)}deg) rotateX(${(-sepCurrent.y).toFixed(2)}deg) rotateZ(${floatTiltZ.toFixed(2)}deg) translateY(${(floatWave + sepCurrent.lift).toFixed(2)}px) scale3d(${sepCurrent.scale.toFixed(3)}, ${sepCurrent.scale.toFixed(3)}, ${sepCurrent.scale.toFixed(3)})`;
+
+        if (separatedGlare) {
+          const targetOpacity = sepTarget.isHovering ? 0.65 : 0;
+          sepCurrent.glareOpacity += (targetOpacity - sepCurrent.glareOpacity) * 0.12;
+          separatedGlare.style.opacity = sepCurrent.glareOpacity.toFixed(2);
+          separatedGlare.style.background = `radial-gradient(circle 260px at ${sepTarget.glareX.toFixed(1)}% ${sepTarget.glareY.toFixed(1)}%, rgba(255,255,255,0.22), transparent 70%)`;
+        }
       }
 
       rafId = requestAnimationFrame(animateLoop);
     };
 
-    card.addEventListener('mousemove', onMouseMove, { passive: true });
-    card.addEventListener('mouseleave', onMouseLeave);
     rafId = requestAnimationFrame(animateLoop);
 
     return () => {
       cancelAnimationFrame(rafId);
-      card.removeEventListener('mousemove', onMouseMove);
-      card.removeEventListener('mouseleave', onMouseLeave);
+      primary.removeEventListener('mousemove', onPrimaryMouseMove);
+      primary.removeEventListener('mouseleave', onPrimaryMouseLeave);
+      if (separated) {
+        separated.removeEventListener('mousemove', onSepMouseMove);
+        separated.removeEventListener('mouseleave', onSepMouseLeave);
+      }
     };
-  }, [config.enableCardTilt]);
+  }, [config.enableCardTilt, config.cardLayoutType]);
 
   // Real Glass & Morphism styling classes
   const getTemplateContainerStyles = () => {
@@ -299,38 +387,49 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
       : undefined,
   };
 
+  // Dynamic auto-sync badge capsule & pill container styling matching card palette
+  const pillStyle = {
+    background: config.enableProfileGradient
+      ? `linear-gradient(135deg, rgba(${primaryRgb}, 0.92), rgba(${secondaryRgb}, 0.82))`
+      : `rgba(${primaryRgb}, 0.92)`,
+    borderColor: config.cardBorderColor || 'rgba(255, 255, 255, 0.15)',
+    boxShadow: (config.cardGlowSpread && config.cardGlowSpread > 0)
+      ? `0 0 ${Math.max(8, Math.round(config.cardGlowSpread * 0.45))}px ${config.cardGlowColor || '#a855f7'}40, inset 0 1px 1px rgba(255,255,255,0.18)`
+      : `0 8px 24px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.14), 0 0 12px rgba(${primaryRgb}, 0.3)`,
+  };
+
   return (
-    <div style={{ perspective: 1200 }} className="relative flex items-center justify-center p-2 sm:p-4 w-full">
+    <div style={{ perspective: 1200 }} className="relative flex flex-col items-center justify-center p-2 sm:p-4 w-full">
       <div
-        ref={cardRef}
         style={{
           width: `${config.cardWidth}px`,
           fontFamily: getFontFamily(config.fontFamily),
           color: config.textColor,
-          willChange: 'transform',
-          transformStyle: 'preserve-3d',
         }}
-        className="relative flex flex-col gap-3.5 select-none transition-transform duration-100 ease-out"
+        className="relative flex flex-col gap-4 select-none items-center"
       >
-        {/* Dynamic Specular Sheen Overlay */}
-        <div
-          ref={glareRef}
-          className="pointer-events-none absolute inset-0 z-40 rounded-3xl transition-opacity duration-150"
-          style={{
-            background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), transparent)',
-            opacity: 0,
-            mixBlendMode: 'overlay',
-          }}
-        />
-
         {/* PRIMARY CARD (Profile Info, Banner, Avatar, Bio, Widgets) */}
         <div
+          ref={primaryCardRef}
           style={{
+            width: '100%',
             minHeight: config.cardHeight > 0 ? `${config.cardHeight}px` : undefined,
+            willChange: 'transform',
+            transformStyle: 'preserve-3d',
             ...cardBackgroundStyle,
           }}
           className={`relative overflow-hidden transition-shadow duration-300 ${getTemplateContainerStyles()}`}
         >
+          {/* Dynamic Specular Sheen Overlay for Primary Card */}
+          <div
+            ref={primaryGlareRef}
+            className="pointer-events-none absolute inset-0 z-40 rounded-3xl transition-opacity duration-150"
+            style={{
+              background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), transparent)',
+              opacity: 0,
+              mixBlendMode: 'overlay',
+            }}
+          />
           {/* Card Texture Overlays */}
           {config.cardTexture === 'scanlines' && (
             <div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(rgba(255,255,255,0)_50%,rgba(0,0,0,0.35)_50%)] bg-[length:100%_4px] opacity-30" />
@@ -344,15 +443,23 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
 
           {/* Option: Pinned Vertical Badges Rectangle on the right side */}
           {config.badgePosition === 'vertical-pinned' && activeBadges.length > 0 && (
-            <div className="absolute right-3.5 top-[calc(9rem+1rem)] z-30 flex flex-col items-center gap-2 p-2 rounded-2xl border border-white/15 bg-black/45 backdrop-blur-xl shadow-lg">
+            <div
+              style={pillStyle}
+              className="absolute right-3.5 top-[calc(9rem+1rem)] z-30 flex flex-col items-center gap-2 p-2 rounded-2xl border backdrop-blur-xl transition-all duration-300"
+            >
               {activeBadges.map((badge) => (
                 <div key={badge.id} className="relative group">
                   <img
                     src={badge.file}
                     alt={badge.name}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                     className="w-5 h-5 object-contain filter drop-shadow hover:scale-125 transition-transform duration-150 cursor-pointer"
                     style={{
-                      filter: config.glowBadges ? 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' : 'none',
+                      filter: config.glowBadges
+                        ? `drop-shadow(0 0 6px ${config.cardGlowColor || '#ffffff'})`
+                        : 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
                     }}
                   />
                   <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-md bg-black/90 border border-white/10 text-[10px] font-mono text-white whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
@@ -446,15 +553,23 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
 
                 {/* Avatar Corner Badges */}
                 {config.badgePosition === 'avatar-corner' && activeBadges.length > 0 && (
-                  <div className="absolute -top-3 -right-6 z-30 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/75 border border-white/20 backdrop-blur-md shadow-lg">
+                  <div
+                    style={pillStyle}
+                    className="absolute -top-3 -right-6 z-30 flex items-center gap-1 px-2.5 py-1 rounded-full border backdrop-blur-md shadow-lg transition-all duration-300"
+                  >
                     {activeBadges.map((badge) => (
                       <div key={badge.id} className="relative group">
                         <img
                           src={badge.file}
                           alt={badge.name}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
                           className="w-4 h-4 object-contain filter drop-shadow hover:scale-125 transition-transform cursor-pointer"
                           style={{
-                            filter: config.glowBadges ? 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' : 'none',
+                            filter: config.glowBadges
+                              ? `drop-shadow(0 0 6px ${config.cardGlowColor || '#ffffff'})`
+                              : 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
                           }}
                         />
                         <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-black/90 border border-white/10 text-[9px] font-mono text-white whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
@@ -527,9 +642,14 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
                   <img
                     src={badge.file}
                     alt={badge.name}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                     className="w-5 h-5 object-contain filter drop-shadow hover:scale-125 transition-transform duration-150 cursor-pointer inline-block"
                     style={{
-                      filter: config.glowBadges ? 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' : 'none',
+                      filter: config.glowBadges
+                        ? `drop-shadow(0 0 6px ${config.cardGlowColor || '#ffffff'})`
+                        : 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
                     }}
                   />
                   <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-black/90 border border-white/10 text-[10px] font-mono text-white whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
@@ -542,15 +662,23 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
             {/* Dedicated Badges Pill / Capsule Container (Image 1: All in one rectangle / outliner) */}
             {config.badgePosition === 'capsule' && activeBadges.length > 0 && (
               <div className={`mt-2.5 flex items-center ${config.centeredLayout ? 'justify-center' : 'justify-start'}`}>
-                <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#161622]/90 border border-white/15 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_4px_12px_rgba(0,0,0,0.5)]">
+                <div
+                  style={pillStyle}
+                  className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border backdrop-blur-md transition-all duration-300"
+                >
                   {activeBadges.map((badge) => (
                     <div key={badge.id} className="relative group">
                       <img
                         src={badge.file}
                         alt={badge.name}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                         className="w-5 h-5 object-contain filter drop-shadow hover:scale-125 transition-transform duration-150 cursor-pointer"
                         style={{
-                          filter: config.glowBadges ? 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' : 'none',
+                          filter: config.glowBadges
+                            ? `drop-shadow(0 0 6px ${config.cardGlowColor || '#ffffff'})`
+                            : 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
                         }}
                       />
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-black/90 border border-white/10 text-[10px] font-mono text-white whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
@@ -733,13 +861,27 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
         {/* SEPARATED CARDS TEMPLATE: Distinct standalone bottom card for logos and links */}
         {isSeparated && activeLogos.length > 0 && (
           <div
+            ref={separatedCardRef}
             style={{
+              width: '100%',
+              willChange: 'transform',
+              transformStyle: 'preserve-3d',
               ...cardBackgroundStyle,
               padding: `${config.dockBarPadding ?? 20}px ${Math.round((config.dockBarPadding ?? 20) * 1.35)}px`,
               gap: `${config.dockBarGap ?? 20}px`,
             }}
-            className={`relative flex items-center justify-center flex-wrap transition-all duration-300 ${getTemplateContainerStyles()}`}
+            className={`relative flex items-center justify-center flex-wrap transition-all duration-300 overflow-hidden ${getTemplateContainerStyles()}`}
           >
+            {/* Dynamic Specular Sheen Overlay for Separated Dock Card */}
+            <div
+              ref={separatedGlareRef}
+              className="pointer-events-none absolute inset-0 z-40 rounded-3xl transition-opacity duration-150"
+              style={{
+                background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.22), transparent)',
+                opacity: 0,
+                mixBlendMode: 'overlay',
+              }}
+            />
             {activeLogos.map((logo) => (
               <div key={logo.id} className="relative group">
                 <a

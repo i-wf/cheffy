@@ -1006,6 +1006,67 @@ export function Dashboard() {
               </div>
             </div>
 
+            {/* Description Animation Effect Selector */}
+            <div className="space-y-1.5">
+              <span className="text-xs font-mono text-white/60">Bio Description Animation Effect</span>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                {[
+                  { id: 'typewriter', label: 'Typewriter' },
+                  { id: 'rainbow', label: 'Rainbow' },
+                  { id: 'glitch', label: 'Glitch' },
+                  { id: 'glow', label: 'Neon Glow' },
+                  { id: 'wave', label: 'Wave' },
+                  { id: 'none', label: 'None' },
+                ].map((eff) => (
+                  <button
+                    key={eff.id}
+                    onClick={() => updateConfig({ descriptionEffect: eff.id as any })}
+                    className={`py-1.5 px-1 text-center rounded-lg text-xs font-mono border transition-all ${
+                      (config.descriptionEffect || 'none') === eff.id
+                        ? 'border-purple-400 bg-purple-600 text-white font-semibold'
+                        : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
+                    }`}
+                  >
+                    {eff.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Click to Enter Landing Screen Controls (media_1790438807113.png) */}
+            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-mono text-white/90 block font-medium">"Click to Enter" Gate Screen</span>
+                  <span className="text-[10px] text-white/40">Dark blurred landing screen before showing site (media_1790438807113.png)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateConfig({ enableClickToEnter: !config.enableClickToEnter })}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-all ${
+                    config.enableClickToEnter
+                      ? 'bg-purple-600 border-purple-500 text-white font-semibold shadow-sm'
+                      : 'bg-white/5 border-white/10 text-white/40'
+                  }`}
+                >
+                  {config.enableClickToEnter ? 'GATE ON' : 'OFF'}
+                </button>
+              </div>
+
+              {config.enableClickToEnter && (
+                <div className="space-y-1 pt-1">
+                  <span className="text-xs font-mono text-white/60">Unlock Prompt Text</span>
+                  <input
+                    type="text"
+                    value={config.clickToEnterText || ''}
+                    onChange={(e) => updateConfig({ clickToEnterText: e.target.value })}
+                    placeholder="click to enter..."
+                    className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Profile Info Inputs */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">

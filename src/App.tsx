@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   CustomizationProvider,
   useCustomization,
@@ -8,9 +9,11 @@ import { SparkleCursorTrail } from './components/SparkleCursorTrail';
 import { InteractiveProfileCard } from './components/InteractiveProfileCard';
 import { PageShowcase } from './components/PageShowcase';
 import { Dashboard } from './components/Dashboard';
+import { ClickToEnterOverlay } from './components/ClickToEnterOverlay';
 
 function AppContent() {
   const { isDashboardRoute, config } = useCustomization();
+  const [hasEntered, setHasEntered] = useState(false);
 
   // If secret route /& is visited
   if (isDashboardRoute) {
@@ -18,6 +21,7 @@ function AppContent() {
   }
 
   const showShowcase = config.showPageShowcase ?? true;
+  const enableGate = config.enableClickToEnter ?? true;
 
   return (
     <div
@@ -25,6 +29,14 @@ function AppContent() {
         showShowcase ? 'overflow-y-auto' : 'overflow-hidden justify-center'
       }`}
     >
+      {/* Click to Enter Landing Overlay (media_1790438807113.png) */}
+      {enableGate && (
+        <ClickToEnterOverlay
+          text={config.clickToEnterText || 'click to enter...'}
+          onEnter={() => setHasEntered(true)}
+        />
+      )}
+
       {/* Background Effect (Aurora, Snowflakes, Rain, Stars, Blurred, etc.) */}
       <HeavenlyBackground />
 
@@ -34,8 +46,12 @@ function AppContent() {
       {/* Custom Cross/Glow Cursor */}
       <AestheticCursor />
 
-      {/* HERO SECTION: Center Profile Card */}
-      <section className="relative z-10 w-full min-h-[92vh] flex flex-col items-center justify-center p-3 sm:p-6">
+      {/* HERO SECTION: Center Profile Card with Pop-Up Entrance Animation */}
+      <section
+        className={`relative z-10 w-full min-h-[92vh] flex flex-col items-center justify-center p-3 sm:p-6 transition-all duration-700 ease-out ${
+          enableGate && !hasEntered ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+        }`}
+      >
         <InteractiveProfileCard />
 
         {/* Smooth Scroll Prompt Indicator to Next Page Section */}

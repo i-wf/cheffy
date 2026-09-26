@@ -127,6 +127,58 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
     return () => clearInterval(interval);
   }, [config.usernameEffect]);
 
+  // Description typewriter animation state & effect
+  const [displayedDesc, setDisplayedDesc] = useState(config.description);
+  const [descCursorVisible, setDescCursorVisible] = useState(true);
+
+  useEffect(() => {
+    if (config.descriptionEffect !== 'typewriter') {
+      setDisplayedDesc(config.description);
+      return;
+    }
+
+    const fullDesc = config.description || 'welcome to my website';
+    let isMounted = true;
+    let charIndex = 0;
+    let isDeleting = false;
+    let timer: any;
+
+    const tick = () => {
+      if (!isMounted) return;
+      if (!isDeleting) {
+        charIndex++;
+        setDisplayedDesc(fullDesc.substring(0, charIndex));
+        if (charIndex >= fullDesc.length) {
+          isDeleting = true;
+          timer = setTimeout(tick, 2800);
+          return;
+        }
+        timer = setTimeout(tick, 70);
+      } else {
+        charIndex--;
+        setDisplayedDesc(fullDesc.substring(0, charIndex));
+        if (charIndex <= 0) {
+          isDeleting = false;
+          timer = setTimeout(tick, 700);
+          return;
+        }
+        timer = setTimeout(tick, 35);
+      }
+    };
+
+    timer = setTimeout(tick, 500);
+
+    const blinkInterval = setInterval(() => {
+      if (isMounted) setDescCursorVisible((v) => !v);
+    }, 500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearInterval(blinkInterval);
+    };
+  }, [config.description, config.descriptionEffect]);
+
   // Ultra-smooth 144Hz continuous LERP physics (zero jitter, silky damping)
   useEffect(() => {
     const card = cardRef.current;
@@ -510,16 +562,46 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
               </div>
             )}
 
-            {/* Description ("welcome to my website") */}
-            <p
-              className="text-sm mt-2 leading-relaxed opacity-85"
+            {/* Description with Effects (Typewriter, Rainbow, Glitch, Glow, Wave) */}
+            <div
+              className={`text-sm mt-2 leading-relaxed opacity-85 ${
+                config.descriptionEffect === 'rainbow' ? 'animate-rainbow font-medium' : ''
+              } ${config.descriptionEffect === 'glitch' ? 'animate-fuzzy' : ''}`}
               style={{
-                color: config.textColor,
-                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                color: config.descriptionEffect === 'rainbow' ? undefined : config.textColor,
+                filter:
+                  config.descriptionEffect === 'glow'
+                    ? 'drop-shadow(0 0 10px rgba(168,85,247,0.85)) drop-shadow(0 0 20px rgba(168,85,247,0.4))'
+                    : 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
               }}
             >
-              {config.description}
-            </p>
+              {config.descriptionEffect === 'typewriter' ? (
+                <>
+                  <span>{displayedDesc}</span>
+                  <span
+                    className={`inline-block font-mono text-purple-400 font-light ml-0.5 ${
+                      descCursorVisible ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  >
+                    |
+                  </span>
+                </>
+              ) : config.descriptionEffect === 'wave' ? (
+                <span className="inline-flex flex-wrap">
+                  {config.description.split('').map((ch, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-block animate-bounce"
+                      style={{ animationDelay: `${idx * 0.05}s`, animationDuration: '1.2s' }}
+                    >
+                      {ch === ' ' ? '\u00A0' : ch}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                config.description
+              )}
+            </div>
 
             {/* Location ("📍 MASKAT" - Matching image 1) */}
             {config.location && (

@@ -118,11 +118,16 @@ export interface SiteConfig {
   username: string;
   usernameEffect: 'none' | 'typewriter' | 'rainbow' | 'glitch' | 'glow' | 'wave';
   description: string;
+  descriptionEffect: 'none' | 'typewriter' | 'rainbow' | 'glitch' | 'glow' | 'wave';
   location: string;
   profileWidget: 'discord' | 'none';
   discordId: string;
   profileOpacity: number; // 20 - 100
   profileBlur: number;    // 0 - 80
+
+  // Click to Enter Landing Screen
+  enableClickToEnter: boolean;
+  clickToEnterText: string;
 
   // Glow Settings
   glowUsername: boolean;
@@ -287,11 +292,16 @@ const defaultConfig: SiteConfig = {
   username: 'S',
   usernameEffect: 'typewriter',
   description: 'welcome to my website',
+  descriptionEffect: 'typewriter',
   location: 'MASKAT',
   profileWidget: 'discord',
   discordId: '183234792534310912',
   profileOpacity: 85,
   profileBlur: 24,
+
+  // Click to Enter Screen
+  enableClickToEnter: true,
+  clickToEnterText: 'click to enter...',
 
   glowUsername: true,
   glowSocials: true,
@@ -355,7 +365,7 @@ interface CustomizationContextType {
 }
 
 const CustomizationContext = createContext<CustomizationContextType | undefined>(undefined);
-const STORAGE_KEY = 'chef_zyo_customization_v8';
+const STORAGE_KEY = 'chef_zyo_customization_v9';
 
 export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<SiteConfig>(() => {

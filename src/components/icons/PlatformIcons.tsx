@@ -15,7 +15,8 @@ export type PlatformKey =
   | 'kick' 
   | 'globe' 
   | 'link'
-  | 'custom';
+  | 'custom'
+  | 'btc' | 'eth' | 'sol' | 'ltc' | 'usdt' | 'bnb' | 'xrp' | 'doge' | 'ada' | 'matic';
 
 export interface PlatformDef {
   key: PlatformKey;
@@ -42,6 +43,16 @@ export const PLATFORM_REGISTRY: Record<PlatformKey, PlatformDef> = {
   globe: { key: 'globe', name: 'Website', defaultUrl: 'https://', color: '#ffffff' },
   link: { key: 'link', name: 'Generic Link', defaultUrl: 'https://', color: '#ffffff' },
   custom: { key: 'custom', name: 'Custom Upload / URL', defaultUrl: 'https://', color: '#a855f7' },
+  btc: { key: 'btc', name: 'Bitcoin', defaultUrl: '', color: '#F7931A' },
+  eth: { key: 'eth', name: 'Ethereum', defaultUrl: '', color: '#627EEA' },
+  sol: { key: 'sol', name: 'Solana', defaultUrl: '', color: '#9945FF' },
+  ltc: { key: 'ltc', name: 'Litecoin', defaultUrl: '', color: '#BFBBBB' },
+  usdt: { key: 'usdt', name: 'Tether', defaultUrl: '', color: '#26A17B' },
+  bnb: { key: 'bnb', name: 'BNB', defaultUrl: '', color: '#F3BA2F' },
+  xrp: { key: 'xrp', name: 'XRP', defaultUrl: '', color: '#ffffff' },
+  doge: { key: 'doge', name: 'Dogecoin', defaultUrl: '', color: '#C2A633' },
+  ada: { key: 'ada', name: 'Cardano', defaultUrl: '', color: '#0033AD' },
+  matic: { key: 'matic', name: 'Polygon', defaultUrl: '', color: '#8247E5' },
 };
 
 export function PlatformIcon({
@@ -154,6 +165,72 @@ export function PlatformIcon({
           <circle cx="12" cy="12" r="10" />
           <line x1="2" y1="12" x2="22" y2="12" />
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+      );
+    case 'btc':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M23.638 14.904c-1.602 6.43-8.113 10.34-14.542 8.736C2.67 22.05-1.244 15.525.362 9.105 1.962 2.67 8.475-1.243 14.9.358c6.43 1.605 10.342 8.115 8.738 14.546zm-6.35-4.613c.24-1.59-.974-2.45-2.64-3.03l.54-2.153-1.315-.33-.525 2.107c-.345-.087-.7-.168-1.053-.25l.53-2.12-1.318-.33-.54 2.16c-.285-.065-.565-.13-.84-.2l.001-.007-1.815-.45-.35 1.407s.975.224.955.238c.535.136.63.494.614.78l-.614 2.47c.037.01.085.024.137.045l-.14-.033-.86 3.45c-.065.16-.23.405-.6.31.015.02-.96-.24-.96-.24l-.66 1.51 1.71.426.93.236-.54 2.19 1.32.33.54-2.17c.36.1.705.19 1.05.273l-.54 2.14 1.32.33.545-2.19c2.24.427 3.93.254 4.64-1.774.57-1.637-.03-2.58-1.217-3.196.854-.2 1.508-.76 1.68-1.93h.01zm-3.01 4.22c-.404 1.64-3.157.75-4.05.53l.72-2.9c.896.23 3.757.67 3.33 2.37zm.41-4.24c-.37 1.49-2.662.733-3.405.548l.654-2.64c.744.19 3.137.54 2.75 2.09z"/>
+        </svg>
+      );
+    case 'eth':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+        </svg>
+      );
+    case 'sol':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M20.04 17.5a.75.75 0 0 1-.53.22H4.08a.375.375 0 0 1-.265-.64l3.46-3.46a.75.75 0 0 1 .53-.22h15.43a.375.375 0 0 1 .265.64l-3.46 3.46zm0-14a.75.75 0 0 0-.53-.22H4.08a.375.375 0 0 0-.265.64l3.46 3.46a.75.75 0 0 0 .53.22h15.43a.375.375 0 0 0 .265-.64L20.04 3.5zm-15.96 7a.75.75 0 0 1 .53-.22h15.43a.375.375 0 0 1 .265.64l-3.46 3.46a.75.75 0 0 1-.53.22H.885a.375.375 0 0 1-.265-.64l3.46-3.46z"/>
+        </svg>
+      );
+    case 'ltc':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M12 0a12 12 0 1 0 12 12A12 12 0 0 0 12 0zm-.262 3.617h2.822a.3.3 0 0 1 .288.382l-2.156 7.964 1.584-.57-.4 1.307-1.636.588-1.085 4.058h6.784a.3.3 0 0 1 .288.382l-.514 1.898a.3.3 0 0 1-.288.218H6.548l1.538-5.755-1.584.57.408-1.304 1.636-.59 2.07-7.764a.3.3 0 0 1 .29-.218l-.216.834z"/>
+        </svg>
+      );
+    case 'usdt':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M12 0C5.374 0 0 5.374 0 12s5.374 12 12 12 12-5.374 12-12S18.629 0 12 0zm5.265 7.083H6.735v2.375h4.109v3.36c-2.373.12-4.154.612-4.154 1.2 0 .687 2.127 1.245 4.754 1.245 2.625 0 4.753-.558 4.753-1.245 0-.586-1.766-1.076-4.12-1.198V9.458h4.188V7.083z"/>
+        </svg>
+      );
+    case 'bnb':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M12 0l2.89 2.89-5.79 5.79L6.21 5.79 12 0zm5.79 6.21l2.89 2.89-2.89 2.89-2.89-2.89 2.89-2.89zM3.32 6.21l2.89 2.89L3.32 12 .43 9.1l2.89-2.89zM12 8.53L14.89 11.42 12 14.31 9.11 11.42 12 8.53zM6.21 11.42L9.1 14.31l-2.89 2.89L3.32 14.31l2.89-2.89zm11.58 0l2.89 2.89-2.89 2.89-2.89-2.89 2.89-2.89zM12 15.63l2.89 2.89L12 21.42 9.11 18.52 12 15.63z"/>
+        </svg>
+      );
+    case 'xrp':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M1.412 0h3.795l5.774 5.79L16.768 0h3.807l-7.6 7.616L20.576 15.2h-3.81l-5.79-5.8L5.188 15.2H1.39l7.608-7.584L1.412 0zm0 24h3.795l5.774-5.79L16.768 24h3.807l-7.6-7.616L5.376 8.8H1.566l5.79 5.8-5.946 5.608L1.412 24z"/>
+        </svg>
+      );
+    case 'doge':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.144 19.189H7.79V4.812h4.277c5.25 0 5.417 5.992 5.417 6.958 0 1.068-.18 7.42-6.628 7.42zm.476-11.873h-1.66v9.37h.856c4.18 0 4.593-3.854 4.593-5.054 0-1.052-.236-4.316-3.79-4.316z"/>
+        </svg>
+      );
+    case 'ada':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <circle cx="12" cy="2.5" r="1.8"/>
+          <circle cx="12" cy="21.5" r="1.8"/>
+          <circle cx="5" cy="7" r="1.8"/>
+          <circle cx="19" cy="17" r="1.8"/>
+          <circle cx="19" cy="7" r="1.8"/>
+          <circle cx="5" cy="17" r="1.8"/>
+          <circle cx="12" cy="12" r="2.5"/>
+        </svg>
+      );
+    case 'matic':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+          <path d="M17.22 8.65c-.37-.21-.84-.21-1.17 0l-2.72 1.58-1.84 1.07-2.72 1.58c-.37.21-.84.21-1.17 0l-2.14-1.24c-.37-.21-.63-.63-.63-1.06V8.38c0-.42.21-.84.63-1.06l2.14-1.2c.37-.21.84-.21 1.17 0l2.14 1.2c.37.21.63.63.63 1.06v1.58l1.84-1.07V7.31c0-.42-.21-.84-.63-1.06L9.02 3.67c-.37-.21-.84-.21-1.17 0L3.98 6.29c-.42.21-.63.63-.63 1.06v5.16c0 .42.21.84.63 1.06l3.87 2.2c.37.21.84.21 1.17 0l2.72-1.54 1.84-1.07 2.72-1.54c.37-.21.84-.21 1.17 0l2.14 1.2c.37.21.63.63.63 1.06v2.18c0 .42-.21.84-.63 1.06l-2.1 1.2c-.37.21-.84.21-1.17 0l-2.14-1.2c-.37-.21-.63-.63-.63-1.06v-1.54l-1.84 1.07v1.58c0 .42.21.84.63 1.06l3.87 2.2c.37.21.84.21 1.17 0l3.87-2.2c.37-.21.63-.63.63-1.06v-5.2c0-.42-.21-.84-.63-1.06l-3.9-2.16z"/>
         </svg>
       );
     case 'custom':

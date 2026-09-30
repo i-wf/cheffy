@@ -48,6 +48,14 @@ export interface LogoButtonItem {
   enabled: boolean;
 }
 
+export interface CryptoButtonItem {
+  id: string;
+  name: string;      // e.g. 'Bitcoin', 'Ethereum'
+  coinKey: string;    // 'btc' | 'eth' | 'sol' | 'ltc' | 'usdt' | 'bnb' | 'xrp' | 'doge' | 'ada' | 'matic'
+  address: string;    // wallet address to copy
+  enabled: boolean;
+}
+
 export interface ProjectItem {
   id: string;
   title: string;
@@ -84,11 +92,11 @@ export interface SiteConfig {
   enableSparkleTrail: boolean;
 
   // Layout & Alignment
-  cardLayoutType: 'single' | 'separated'; // Separated Dual Cards or Unified Card
+  cardLayoutType: 'single' | 'separated' | 'landscape'; // Separated Dual Cards, Unified Card, or Landscape
   centeredLayout: boolean; // Move profile in middle (switch)
   bannerFadeStyle: 'none' | 'gradient' | 'wavy';
-  badgePosition: 'capsule' | 'vertical-pinned' | 'inline' | 'avatar-corner';
-  profileDecoration: 'none' | 'venom';
+  badgePosition: 'capsule' | 'vertical-pinned' | 'inline' | 'inline-capsule' | 'avatar-corner';
+  profileDecoration: 'none' | 'venom' | 'ghost';
   showViewCount: boolean;
   viewCount: string;
 
@@ -122,6 +130,7 @@ export interface SiteConfig {
   location: string;
   profileWidget: 'discord' | 'none';
   discordId: string;
+  discordTheme: 1 | 2 | 3; // Themes 1, 2, 3 for discord.c99.nl
   profileOpacity: number; // 20 - 100
   profileBlur: number;    // 0 - 80
 
@@ -175,6 +184,9 @@ export interface SiteConfig {
 
   // Changeable Logo Buttons
   logoButtons: LogoButtonItem[];
+
+  // Crypto / Wallet Address Copy Buttons
+  cryptoButtons: CryptoButtonItem[];
 }
 
 const defaultBadges: CustomBadgeItem[] = [
@@ -197,6 +209,14 @@ const defaultLogoButtons: LogoButtonItem[] = [
   { id: 'tiktok', name: 'TikTok', iconKey: 'tiktok', file: '/icons/logo/30DA14C4-8D0C-4105-A345-E0F68F461151.png', url: 'https://tiktok.com', enabled: true },
   { id: 'spotify', name: 'Spotify', iconKey: 'spotify', file: '/icons/logo/BC611DD6-29F7-4F55-87C6-531C8DD6C669.png', url: 'https://spotify.com', enabled: true },
   { id: 'roblox', name: 'Roblox', iconKey: 'roblox', file: '/icons/logo/E62F1811-A463-492C-8751-6CE0B1C801B3.png', url: 'https://roblox.com', enabled: true },
+];
+
+const defaultCryptoButtons: CryptoButtonItem[] = [
+  { id: 'btc', name: 'Bitcoin', coinKey: 'btc', address: '', enabled: false },
+  { id: 'eth', name: 'Ethereum', coinKey: 'eth', address: '', enabled: false },
+  { id: 'sol', name: 'Solana', coinKey: 'sol', address: '', enabled: false },
+  { id: 'ltc', name: 'Litecoin', coinKey: 'ltc', address: '', enabled: false },
+  { id: 'usdt', name: 'Tether', coinKey: 'usdt', address: '', enabled: false },
 ];
 
 const defaultProjects: ProjectItem[] = [
@@ -296,6 +316,7 @@ const defaultConfig: SiteConfig = {
   location: 'MASKAT',
   profileWidget: 'discord',
   discordId: '183234792534310912',
+  discordTheme: 2,
   profileOpacity: 85,
   profileBlur: 24,
 
@@ -342,16 +363,23 @@ const defaultConfig: SiteConfig = {
 
   badges: defaultBadges,
   logoButtons: defaultLogoButtons,
+  cryptoButtons: defaultCryptoButtons,
 };
 
 interface CustomizationContextType {
   config: SiteConfig;
   updateConfig: (updates: Partial<SiteConfig>) => void;
   toggleBadge: (badgeId: string) => void;
+  addBadge: (item: Omit<CustomBadgeItem, 'id'>) => void;
+  removeBadge: (badgeId: string) => void;
   addLogoButton: (item: Omit<LogoButtonItem, 'id'>) => void;
   removeLogoButton: (logoId: string) => void;
   updateLogoButton: (logoId: string, updates: Partial<LogoButtonItem>) => void;
   moveLogoButton: (index: number, direction: 'up' | 'down') => void;
+  addCryptoButton: (item: Omit<CryptoButtonItem, 'id'>) => void;
+  removeCryptoButton: (id: string) => void;
+  updateCryptoButton: (id: string, updates: Partial<CryptoButtonItem>) => void;
+  toggleCryptoButton: (id: string) => void;
   addProject: (item: Omit<ProjectItem, 'id'>) => void;
   removeProject: (id: string) => void;
   updateProject: (id: string, updates: Partial<ProjectItem>) => void;
@@ -365,7 +393,7 @@ interface CustomizationContextType {
 }
 
 const CustomizationContext = createContext<CustomizationContextType | undefined>(undefined);
-const STORAGE_KEY = 'chef_zyo_customization_v9';
+const STORAGE_KEY = 'chef_zyo_customization_v10';
 
 export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<SiteConfig>(() => {
@@ -374,10 +402,17 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       const parsedLocal = savedLocal ? JSON.parse(savedLocal) : null;
       const initial = { ...defaultConfig, ...(savedConfigData as any), ...(parsedLocal || {}) };
 
-      const cleanBadges = defaultBadges.map((b) => {
-        const found = initial.badges?.find((pb: any) => pb.id === b.id);
-        return found ? { ...b, enabled: found.enabled } : b;
-      });
+      const customAdded = (initial.badges || []).filter(
+        (b: any) => !defaultBadges.some((db) => db.id === b.id)
+      );
+
+      const cleanBadges = [
+        ...defaultBadges.map((b) => {
+          const found = initial.badges?.find((pb: any) => pb.id === b.id);
+          return found ? { ...b, enabled: found.enabled } : b;
+        }),
+        ...customAdded,
+      ];
 
       // Sanitize expired blob URLs
       if (initial.bannerUrl && initial.bannerUrl.startsWith('blob:')) {
@@ -394,11 +429,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         ? initial.logoButtons
         : defaultLogoButtons;
 
+      const cleanCrypto = (initial.cryptoButtons && initial.cryptoButtons.length > 0)
+        ? initial.cryptoButtons
+        : defaultCryptoButtons;
+
       return {
         ...defaultConfig,
         ...initial,
         badges: cleanBadges,
         logoButtons: cleanLogos,
+        cryptoButtons: cleanCrypto,
       };
     } catch {
       return defaultConfig;
@@ -486,6 +526,36 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
+  const addBadge = (item: Omit<CustomBadgeItem, 'id'>) => {
+    setConfig((prev) => {
+      const newBadge: CustomBadgeItem = {
+        id: `badge_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        ...item,
+      };
+      const updated = [...prev.badges, newBadge];
+      const next = { ...prev, badges: updated };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const removeBadge = (badgeId: string) => {
+    setConfig((prev) => {
+      const updated = prev.badges.filter((b) => b.id !== badgeId);
+      const next = { ...prev, badges: updated };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   const addLogoButton = (item: Omit<LogoButtonItem, 'id'>) => {
     setConfig((prev) => {
       const newButton: LogoButtonItem = {
@@ -542,6 +612,45 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch {
         // ignore
       }
+      return next;
+    });
+  };
+
+  const addCryptoButton = (item: Omit<CryptoButtonItem, 'id'>) => {
+    setConfig((prev) => {
+      const newItem: CryptoButtonItem = { ...item, id: `crypto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}` };
+      const next = { ...prev, cryptoButtons: [...prev.cryptoButtons, newItem] };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const removeCryptoButton = (id: string) => {
+    setConfig((prev) => {
+      const next = { ...prev, cryptoButtons: prev.cryptoButtons.filter((c) => c.id !== id) };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const updateCryptoButton = (id: string, updates: Partial<CryptoButtonItem>) => {
+    setConfig((prev) => {
+      const next = {
+        ...prev,
+        cryptoButtons: prev.cryptoButtons.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+      };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const toggleCryptoButton = (id: string) => {
+    setConfig((prev) => {
+      const next = {
+        ...prev,
+        cryptoButtons: prev.cryptoButtons.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c)),
+      };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
   };
@@ -628,10 +737,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         config,
         updateConfig,
         toggleBadge,
+        addBadge,
+        removeBadge,
         addLogoButton,
         removeLogoButton,
         updateLogoButton,
         moveLogoButton,
+        addCryptoButton,
+        removeCryptoButton,
+        updateCryptoButton,
+        toggleCryptoButton,
         addProject,
         removeProject,
         updateProject,

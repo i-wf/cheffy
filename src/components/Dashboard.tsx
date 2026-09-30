@@ -15,8 +15,6 @@ import {
   Palette,
   Plus,
   Trash2,
-  Video,
-  Sun,
   Layers,
   Upload,
   ArrowUp,
@@ -34,6 +32,9 @@ import {
   Rocket,
   ShieldCheck,
   Link as LinkIcon,
+  ChevronDown,
+  ChevronsUpDown,
+  Coins,
 } from 'lucide-react';
 import {
   useCustomization,
@@ -61,10 +62,16 @@ export function Dashboard() {
     config,
     updateConfig,
     toggleBadge,
+    addBadge,
+    removeBadge,
     addLogoButton,
     removeLogoButton,
     updateLogoButton,
     moveLogoButton,
+    addCryptoButton,
+    removeCryptoButton,
+    updateCryptoButton,
+    toggleCryptoButton,
     addProject,
     removeProject,
     updateProject,
@@ -84,6 +91,79 @@ export function Dashboard() {
   const [copiedKey, setCopiedKey] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [saveStatusText, setSaveStatusText] = useState('Save Changes');
+
+  // Collapsible Sections State
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleSection = (id: string) => {
+    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+  const [allCollapsed, setAllCollapsed] = useState(false);
+  const handleToggleAll = () => {
+    if (allCollapsed) {
+      setCollapsed({});
+      setAllCollapsed(false);
+    } else {
+      setCollapsed({
+        media: true,
+        design: true,
+        typography: true,
+        cta: true,
+        badges: true,
+        logos: true,
+        crypto: true,
+        showcase: true,
+        audio: true,
+        security: true,
+      });
+      setAllCollapsed(true);
+    }
+  };
+
+  // Modal State for Add Custom Badge
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [newBadgeName, setNewBadgeName] = useState('');
+  const [newBadgeFile, setNewBadgeFile] = useState('');
+
+  const handleSaveBadgeModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBadgeName.trim() || !newBadgeFile.trim()) return;
+    addBadge({
+      name: newBadgeName.trim(),
+      file: newBadgeFile.trim(),
+      enabled: true,
+    });
+    setShowBadgeModal(false);
+    setNewBadgeName('');
+    setNewBadgeFile('');
+  };
+
+  // Modal State for Add Crypto Button
+  const [showCryptoModal, setShowCryptoModal] = useState(false);
+  const [newCryptoName, setNewCryptoName] = useState('Bitcoin');
+  const [newCryptoCoinKey, setNewCryptoCoinKey] = useState('btc');
+  const [newCryptoAddress, setNewCryptoAddress] = useState('');
+  const [copiedCryptoTest, setCopiedCryptoTest] = useState<string | null>(null);
+
+  const handleTestCopyCrypto = (cryptoId: string, address: string) => {
+    navigator.clipboard.writeText(address).catch(() => {});
+    setCopiedCryptoTest(cryptoId);
+    setTimeout(() => setCopiedCryptoTest(null), 1800);
+  };
+
+  const handleSaveCryptoModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCryptoName.trim() || !newCryptoAddress.trim()) return;
+    addCryptoButton({
+      name: newCryptoName.trim(),
+      coinKey: newCryptoCoinKey,
+      address: newCryptoAddress.trim(),
+      enabled: true,
+    });
+    setShowCryptoModal(false);
+    setNewCryptoName('Bitcoin');
+    setNewCryptoCoinKey('btc');
+    setNewCryptoAddress('');
+  };
 
   const handleCopyPassword = () => {
     const key = config.adminPassword || 'Chef!992831#Zyo$Quantum*Obsidian&Vault%Nexus';
@@ -251,6 +331,19 @@ export function Dashboard() {
     reader.readAsDataURL(file);
   };
 
+  const handleBadgeFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setNewBadgeFile(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Password Lock Screen
   if (!isAuthenticated) {
     const handleLoginSubmit = (e: React.FormEvent) => {
@@ -365,6 +458,15 @@ export function Dashboard() {
           </button>
 
           <button
+            onClick={handleToggleAll}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-mono text-white/60 hover:text-white transition-colors"
+            title={allCollapsed ? 'Expand All Sections' : 'Collapse All Sections'}
+          >
+            <ChevronsUpDown className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">{allCollapsed ? 'Expand' : 'Collapse'}</span>
+          </button>
+
+          <button
             onClick={resetConfig}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-mono text-white/60 hover:text-white transition-colors"
             title="Reset Defaults"
@@ -401,254 +503,280 @@ export function Dashboard() {
             activeTab === 'preview' ? 'hidden lg:block' : 'block'
           }`}
         >
-          {/* 1. MEDIA & ASSETS */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          {/* 1. MEDIA & ASSETS (Side-by-Side PFP, Banner, Background) */}
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('media')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-purple-400" />
+                <ImageIcon className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span>Media & Assets</span>
               </h2>
-              <span className="text-[10px] font-mono text-white/40">Avatar • Banner • Wallpaper • Cursor</span>
-            </div>
-
-            {/* Avatar & Size */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <div className="flex items-center gap-3">
-                <img
-                  src={config.avatarUrl || '/pfp.jpg'}
-                  alt="Avatar"
-                  className="w-12 h-12 rounded-full object-cover border border-white/20"
-                />
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-mono text-white/80">Avatar Picture</span>
-                  <label className="cursor-pointer px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-mono text-purple-300 w-fit">
-                    <Upload className="w-3 h-3 inline mr-1" />
-                    Upload PFP
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFileUpload(e, 'avatarUrl')}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-center gap-1.5">
-                <div className="flex items-center justify-between text-xs font-mono text-white/60">
-                  <span>Avatar Size</span>
-                  <span className="text-purple-300">{config.avatarSize || 104}px</span>
-                </div>
-                <input
-                  type="range"
-                  min="64"
-                  max="140"
-                  step="4"
-                  value={config.avatarSize || 104}
-                  onChange={(e) => updateConfig({ avatarSize: Number(e.target.value) })}
-                  className="accent-purple-500 cursor-pointer"
-                />
-                <button
-                  onClick={() =>
-                    updateConfig({
-                      profileDecoration: config.profileDecoration === 'venom' ? 'none' : 'venom',
-                    })
-                  }
-                  className={`mt-1 py-1 px-2 rounded-lg text-[11px] font-mono border transition-colors ${
-                    config.profileDecoration === 'venom'
-                      ? 'bg-purple-600/30 border-purple-400 text-purple-200'
-                      : 'bg-white/5 border-white/10 text-white/40'
-                  }`}
-                >
-                  Venom Symbiote: {config.profileDecoration === 'venom' ? 'ON' : 'OFF'}
-                </button>
-              </div>
-            </div>
-
-            {/* Banner Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <div className="flex items-center gap-3">
-                <img
-                  src={config.bannerUrl || '/back.png'}
-                  alt="Banner"
-                  className="w-16 h-10 rounded-lg object-cover border border-white/20"
-                />
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-mono text-white/80">Card Banner</span>
-                  <label className="cursor-pointer px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-mono text-purple-300 w-fit">
-                    <Upload className="w-3 h-3 inline mr-1" />
-                    Upload Banner
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFileUpload(e, 'bannerUrl')}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-center gap-1.5">
-                <span className="text-xs font-mono text-white/60">Banner Edge Style</span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(['gradient', 'wavy', 'none'] as const).map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => updateConfig({ bannerFadeStyle: style })}
-                      className={`py-1 text-[11px] font-mono rounded-lg border uppercase transition-all ${
-                        config.bannerFadeStyle === style
-                          ? 'border-purple-400 bg-purple-500/20 text-white'
-                          : 'border-white/10 text-white/40 hover:bg-white/5'
-                      }`}
-                    >
-                      {style}
-                    </button>
-                  ))}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-white/40 hidden sm:inline">PFP • Banner • Wallpaper • Cursor</span>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['media'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>
 
-            {/* Wallpaper Background & Darkness */}
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-white/80">Wallpaper Background</span>
-                <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10">
-                  <button
-                    onClick={() => updateConfig({ bgMediaType: 'image' })}
-                    className={`px-2.5 py-0.5 rounded-md text-[11px] font-mono ${
-                      config.bgMediaType === 'image' ? 'bg-purple-600 text-white' : 'text-white/40'
-                    }`}
-                  >
-                    Image
-                  </button>
-                  <button
-                    onClick={() => updateConfig({ bgMediaType: 'video' })}
-                    className={`px-2.5 py-0.5 rounded-md text-[11px] font-mono ${
-                      config.bgMediaType === 'video' ? 'bg-purple-600 text-white' : 'text-white/40'
-                    }`}
-                  >
-                    <Video className="w-3 h-3 inline mr-1" />
-                    Video
-                  </button>
+            {!collapsed['media'] && (
+              <div className="space-y-3 animate-fadeIn">
+                {/* 3-Column Side-by-Side: PFP, Banner, Wallpaper */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  {/* Column 1: PFP / Avatar */}
+                  <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={config.avatarUrl || '/pfp.jpg'}
+                          alt="PFP"
+                          className="w-10 h-10 rounded-full object-cover border border-white/20 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <span className="text-xs font-mono text-white font-medium block truncate">Avatar</span>
+                          <span className="text-[10px] font-mono text-purple-300">{config.avatarSize || 104}px</span>
+                        </div>
+                      </div>
+                      <label className="cursor-pointer px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-mono text-purple-300 shrink-0">
+                        <Upload className="w-2.5 h-2.5 inline mr-1" />
+                        Upload
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'avatarUrl')}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <input
+                        type="range"
+                        min="64"
+                        max="140"
+                        step="4"
+                        value={config.avatarSize || 104}
+                        onChange={(e) => updateConfig({ avatarSize: Number(e.target.value) })}
+                        className="accent-purple-500 cursor-pointer w-full h-1"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-mono text-white/50 block mb-1">Avatar Decoration</span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['none', 'venom', 'ghost'] as const).map((dec) => (
+                          <button
+                            key={dec}
+                            onClick={() => updateConfig({ profileDecoration: dec })}
+                            className={`py-0.5 text-[10px] font-mono rounded-lg border capitalize transition-all ${
+                              config.profileDecoration === dec
+                                ? 'border-purple-400 bg-purple-500/20 text-white font-medium'
+                                : 'border-white/10 text-white/40 hover:bg-white/5'
+                            }`}
+                          >
+                            {dec}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 2: Banner */}
+                  <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={config.bannerUrl || '/back.png'}
+                          alt="Banner"
+                          className="w-12 h-8 rounded-lg object-cover border border-white/20 shrink-0"
+                        />
+                        <span className="text-xs font-mono text-white font-medium truncate">Banner</span>
+                      </div>
+                      <label className="cursor-pointer px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-mono text-purple-300 shrink-0">
+                        <Upload className="w-2.5 h-2.5 inline mr-1" />
+                        Upload
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'bannerUrl')}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono text-white/50 block">Fade Transition</span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['gradient', 'wavy', 'none'] as const).map((style) => (
+                          <button
+                            key={style}
+                            onClick={() => updateConfig({ bannerFadeStyle: style })}
+                            className={`py-0.5 text-[10px] font-mono rounded-lg border uppercase transition-all ${
+                              config.bannerFadeStyle === style
+                                ? 'border-purple-400 bg-purple-500/20 text-white font-medium'
+                                : 'border-white/10 text-white/40 hover:bg-white/5'
+                            }`}
+                          >
+                            {style}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 3: Wallpaper / Background */}
+                  <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-white font-medium">Wallpaper</span>
+                      <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10">
+                        <button
+                          onClick={() => updateConfig({ bgMediaType: 'image' })}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                            config.bgMediaType === 'image' ? 'bg-purple-600 text-white font-medium' : 'text-white/40'
+                          }`}
+                        >
+                          IMG
+                        </button>
+                        <button
+                          onClick={() => updateConfig({ bgMediaType: 'video' })}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                            config.bgMediaType === 'video' ? 'bg-purple-600 text-white font-medium' : 'text-white/40'
+                          }`}
+                        >
+                          VID
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={config.bgCustomUrl}
+                        onChange={(e) => updateConfig({ bgCustomUrl: e.target.value })}
+                        placeholder="Image or MP4 URL..."
+                        className="flex-1 min-w-0 px-2 py-0.5 rounded-lg bg-black/40 border border-white/10 text-[10px] text-white outline-none font-mono"
+                      />
+                      <label className="cursor-pointer px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-mono text-white/70 shrink-0">
+                        <Upload className="w-2.5 h-2.5 inline mr-1" />
+                        File
+                        <input
+                          type="file"
+                          accept={config.bgMediaType === 'video' ? 'video/mp4,video/*' : 'image/*'}
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, 'bgCustomUrl')}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-[10px] font-mono text-white/50">
+                        <span>Darkness</span>
+                        <span className="text-purple-300">{config.bgOverlayOpacity ?? 45}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="10"
+                        max="85"
+                        step="5"
+                        value={config.bgOverlayOpacity ?? 45}
+                        onChange={(e) => updateConfig({ bgOverlayOpacity: Number(e.target.value) })}
+                        className="accent-purple-500 cursor-pointer w-full h-1"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={config.bgCustomUrl}
-                  onChange={(e) => updateConfig({ bgCustomUrl: e.target.value })}
-                  placeholder={config.bgMediaType === 'video' ? 'MP4 video URL...' : 'Image wallpaper URL...'}
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white outline-none font-mono"
-                />
-                <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-white/70 shrink-0">
-                  <Upload className="w-3.5 h-3.5 inline mr-1" />
-                  File
-                  <input
-                    type="file"
-                    accept={config.bgMediaType === 'video' ? 'video/mp4,video/*' : 'image/*'}
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(e, 'bgCustomUrl')}
-                  />
-                </label>
-              </div>
+                {/* Compact Row: Cursor Preset & Sparkle Trail */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-white/5">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5">
+                    <span className="text-[11px] font-mono text-white/70">Cursor</span>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(['cross', 'default', 'custom'] as const).map((cur) => (
+                        <button
+                          key={cur}
+                          onClick={() => updateConfig({ cursorType: cur })}
+                          className={`px-2 py-0.5 text-[10px] font-mono rounded border uppercase transition-all ${
+                            config.cursorType === cur
+                              ? 'border-purple-400 bg-purple-500/20 text-white font-medium'
+                              : 'border-white/10 text-white/40 hover:bg-white/5'
+                          }`}
+                        >
+                          {cur}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-between text-xs font-mono text-white/60 pt-1">
-                <span className="flex items-center gap-1.5">
-                  <Sun className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Overlay Darkness</span>
-                </span>
-                <span className="text-purple-300">{config.bgOverlayOpacity ?? 45}%</span>
-              </div>
-              <input
-                type="range"
-                min="10"
-                max="85"
-                step="5"
-                value={config.bgOverlayOpacity ?? 45}
-                onChange={(e) => updateConfig({ bgOverlayOpacity: Number(e.target.value) })}
-                className="accent-purple-500 cursor-pointer w-full"
-              />
-            </div>
-
-            {/* Cursor & Particle Trail */}
-            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <div>
-                <span className="text-xs font-mono text-white/70 block mb-1.5">Cursor Preset</span>
-                <div className="grid grid-cols-3 gap-1">
-                  {(['cross', 'default', 'custom'] as const).map((cur) => (
-                    <button
-                      key={cur}
-                      onClick={() => updateConfig({ cursorType: cur })}
-                      className={`py-1 text-[11px] font-mono rounded-lg border uppercase transition-all ${
-                        config.cursorType === cur
-                          ? 'border-purple-400 bg-purple-500/20 text-white'
-                          : 'border-white/10 text-white/40 hover:bg-white/5'
-                      }`}
-                    >
-                      {cur}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div
-                onClick={() => updateConfig({ enableSparkleTrail: !config.enableSparkleTrail })}
-                className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/10 hover:border-purple-400/40 cursor-pointer transition-colors"
-              >
-                <div>
-                  <span className="text-xs font-mono text-white/90 block font-medium">Sparkle Trail</span>
-                  <span className="text-[10px] text-white/40">
-                    {config.enableSparkleTrail ? 'Particles ON' : 'OFF'}
-                  </span>
-                </div>
-                <div
-                  className={`w-8 h-4 rounded-full p-0.5 transition-colors ${
-                    config.enableSparkleTrail ? 'bg-purple-600' : 'bg-white/15'
-                  }`}
-                >
                   <div
-                    className={`w-3 h-3 rounded-full bg-white transition-transform ${
-                      config.enableSparkleTrail ? 'translate-x-4' : 'translate-x-0'
-                    }`}
-                  />
+                    onClick={() => updateConfig({ enableSparkleTrail: !config.enableSparkleTrail })}
+                    className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:border-purple-400/30 cursor-pointer transition-colors"
+                  >
+                    <div>
+                      <span className="text-[11px] font-mono text-white font-medium block">Sparkle Cursor Trail</span>
+                      <span className="text-[9px] text-white/40">{config.enableSparkleTrail ? 'GIF Particles ON' : 'OFF'}</span>
+                    </div>
+                    <div
+                      className={`w-7 h-3.5 rounded-full p-0.5 transition-colors ${
+                        config.enableSparkleTrail ? 'bg-purple-600' : 'bg-white/15'
+                      }`}
+                    >
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full bg-white transition-transform ${
+                          config.enableSparkleTrail ? 'translate-x-3.5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </section>
 
           {/* 2. CARD DESIGN, COLORS & LAYOUTS SUITE */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('design')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <Palette className="w-4 h-4 text-purple-400" />
+                <Palette className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span>Card Colors & Design Suite</span>
               </h2>
-              <span className="text-[10px] font-mono text-white/40">Palettes • Geometry • Glass</span>
-            </div>
-
-            {/* Layout Mode (Separated / Single) */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-mono text-white/60">Card Structure</span>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'separated', label: 'Separated Dual Cards (Floating)' },
-                  { id: 'single', label: 'Unified Single Card' },
-                ].map((layout) => (
-                  <button
-                    key={layout.id}
-                    onClick={() => updateConfig({ cardLayoutType: layout.id as any })}
-                    className={`py-2 px-2 text-center rounded-xl text-xs font-mono border transition-all ${
-                      config.cardLayoutType === layout.id
-                        ? 'border-purple-400 bg-purple-500/20 text-white font-medium shadow-md'
-                        : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
-                    }`}
-                  >
-                    {layout.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-white/40 hidden sm:inline">Palettes • Geometry • Glass</span>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['design'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
               </div>
             </div>
+
+            {!collapsed['design'] && (
+              <div className="space-y-3 animate-fadeIn">
+                {/* Layout Mode (Separated / Single / Landscape) */}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-mono text-white/60">Card Structure</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      { id: 'separated', label: 'Separated Dual Cards' },
+                      { id: 'single', label: 'Unified Single Card' },
+                      { id: 'landscape', label: 'Landscape Compact (zyo.lol)' },
+                    ].map((layout) => (
+                      <button
+                        key={layout.id}
+                        onClick={() => updateConfig({ cardLayoutType: layout.id as any })}
+                        className={`py-2 px-2 text-center rounded-xl text-xs font-mono border transition-all ${
+                          config.cardLayoutType === layout.id
+                            ? 'border-purple-400 bg-purple-500/20 text-white font-medium shadow-md'
+                            : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
+                        }`}
+                      >
+                        {layout.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
             {/* Instant Palette Presets */}
             <div className="space-y-1.5">
@@ -941,17 +1069,30 @@ export function Dashboard() {
                 </span>
               </div>
             </div>
-          </section>
+          </div>
+        )}
+      </section>
 
           {/* 3. TYPOGRAPHY & TEXT EFFECTS */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('typography')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <Type className="w-4 h-4 text-purple-400" />
+                <Type className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span>Typography & Effects</span>
               </h2>
-              <span className="text-[10px] font-mono text-white/40">Fonts • Typewriter • Rainbow</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-white/40 hidden sm:inline">Fonts • Bio FX • Discord Theme</span>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['typography'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
+              </div>
             </div>
+
+            {!collapsed['typography'] && (
+              <div className="space-y-3 animate-fadeIn">
 
             {/* Font Family Selector */}
             <div className="space-y-1">
@@ -1100,245 +1241,350 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* Discord Widget */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 gap-3">
-              <div className="flex-1 space-y-1">
-                <span className="text-xs font-mono text-white/60">Discord Status User ID</span>
-                <input
-                  type="text"
-                  value={config.discordId}
-                  onChange={(e) => updateConfig({ discordId: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                />
+            {/* Discord Widget & Theme Selector (User requested theme 1, 2, 3 route) */}
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 space-y-1">
+                  <span className="text-xs font-mono text-white/60">Discord Status User ID</span>
+                  <input
+                    type="text"
+                    value={config.discordId}
+                    onChange={(e) => updateConfig({ discordId: e.target.value })}
+                    className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                    placeholder="e.g. 183234792534310912"
+                  />
+                </div>
+                <button
+                  onClick={() =>
+                    updateConfig({
+                      profileWidget: config.profileWidget === 'discord' ? 'none' : 'discord',
+                    })
+                  }
+                  className={`py-2 px-3 rounded-lg text-xs font-mono border shrink-0 transition-colors ${
+                    config.profileWidget === 'discord'
+                      ? 'bg-purple-600 border-purple-500 text-white'
+                      : 'bg-white/5 border-white/10 text-white/40'
+                  }`}
+                >
+                  Presence: {config.profileWidget === 'discord' ? 'ON' : 'OFF'}
+                </button>
               </div>
-              <button
-                onClick={() =>
-                  updateConfig({
-                    profileWidget: config.profileWidget === 'discord' ? 'none' : 'discord',
-                  })
-                }
-                className={`py-2 px-3 rounded-lg text-xs font-mono border shrink-0 transition-colors ${
-                  config.profileWidget === 'discord'
-                    ? 'bg-purple-600 border-purple-500 text-white'
-                    : 'bg-white/5 border-white/10 text-white/40'
-                }`}
-              >
-                Discord Presence: {config.profileWidget === 'discord' ? 'ON' : 'OFF'}
-              </button>
+
+              {config.profileWidget === 'discord' && (
+                <div className="pt-2 border-t border-white/5 space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-xs font-mono text-white/60">Presence Theme</span>
+                    <div className="flex items-center gap-1.5">
+                      {([1, 2, 3] as const).map((thm) => (
+                        <button
+                          key={thm}
+                          onClick={() => updateConfig({ discordTheme: thm })}
+                          className={`px-3 py-1 text-xs font-mono rounded-lg border transition-all ${
+                            (config.discordTheme || 1) === thm
+                              ? 'border-purple-400 bg-purple-600 text-white font-semibold shadow-sm'
+                              : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10'
+                          }`}
+                        >
+                          Theme {thm}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-white/10 bg-black/40 p-2 flex justify-center">
+                    <img
+                      src={`https://discord.c99.nl/widget/theme-${config.discordTheme || 1}/${config.discordId || '183234792534310912'}.png`}
+                      alt="Discord Presence Preview"
+                      className="max-h-24 object-contain rounded"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          </section>
+          </div>
+          )}
+        </section>
 
           {/* 4. COMMUNITY / CLICK TO JOIN CTA BUTTON */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('cta')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-purple-400" />
+                <UserPlus className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span>"Click to Join" Button Studio</span>
               </h2>
-              <button
-                onClick={() => updateConfig({ showJoinButton: !config.showJoinButton })}
-                className={`px-2.5 py-0.5 rounded-md text-[11px] font-mono border transition-colors ${
-                  config.showJoinButton
-                    ? 'bg-purple-600 border-purple-500 text-white font-medium shadow-sm'
-                    : 'bg-white/5 border-white/10 text-white/40'
-                }`}
-              >
-                CTA Button: {config.showJoinButton ? 'ACTIVE' : 'OFF'}
-              </button>
-            </div>
-
-            {/* Fields Grid */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <span className="text-xs font-mono text-white/60">Button Title Text</span>
-                  <input
-                    type="text"
-                    value={config.joinButtonText || ''}
-                    onChange={(e) => updateConfig({ joinButtonText: e.target.value })}
-                    placeholder="e.g. Click to Join"
-                    className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-mono text-white/60">Subtext / Community Tag</span>
-                  <input
-                    type="text"
-                    value={config.joinButtonSubtext || ''}
-                    onChange={(e) => updateConfig({ joinButtonSubtext: e.target.value })}
-                    placeholder="e.g. discord.gg/chef or 1,420+ Members"
-                    className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <span className="text-xs font-mono text-white/60">Destination Invite Link</span>
-                  <input
-                    type="text"
-                    value={config.joinButtonUrl || ''}
-                    onChange={(e) => updateConfig({ joinButtonUrl: e.target.value })}
-                    placeholder="https://discord.gg/..."
-                    className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-mono text-white/60">Status Pill Badge (optional)</span>
-                  <input
-                    type="text"
-                    value={config.joinButtonBadge || ''}
-                    onChange={(e) => updateConfig({ joinButtonBadge: e.target.value })}
-                    placeholder="ONLINE / VERIFIED / JOIN"
-                    className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Icon Selector */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-mono text-white/60">Button Icon</span>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                  {[
-                    { id: 'discord', label: 'Discord', icon: <PlatformIcon iconKey="discord" size={16} /> },
-                    { id: 'sparkles', label: 'Sparkles', icon: <Sparkles className="w-3.5 h-3.5" /> },
-                    { id: 'users', label: 'Community', icon: <Users className="w-3.5 h-3.5" /> },
-                    { id: 'flame', label: 'Flame', icon: <Flame className="w-3.5 h-3.5" /> },
-                    { id: 'rocket', label: 'Rocket', icon: <Rocket className="w-3.5 h-3.5" /> },
-                    { id: 'link', label: 'Link', icon: <LinkIcon className="w-3.5 h-3.5" /> },
-                  ].map((ic) => (
-                    <button
-                      key={ic.id}
-                      onClick={() => updateConfig({ joinButtonIcon: ic.id as any })}
-                      className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-mono border transition-all ${
-                        (config.joinButtonIcon || 'discord') === ic.id
-                          ? 'border-purple-400 bg-purple-600 text-white font-semibold shadow'
-                          : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
-                      }`}
-                    >
-                      {ic.icon}
-                      <span className="text-[11px] truncate">{ic.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Style Selector */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-mono text-white/60">Visual Theme</span>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                  {[
-                    { id: 'glow-gradient', label: 'Gradient Glow' },
-                    { id: 'glass-frost', label: 'Frosted Glass' },
-                    { id: 'neon-purple', label: 'Neon Purple' },
-                    { id: 'cyber-cyan', label: 'Cyber Cyan' },
-                    { id: 'minimal', label: 'Minimal Dark' },
-                  ].map((st) => (
-                    <button
-                      key={st.id}
-                      onClick={() => updateConfig({ joinButtonStyle: st.id as any })}
-                      className={`py-1.5 px-2 text-center rounded-xl text-xs font-mono border transition-all ${
-                        (config.joinButtonStyle || 'glow-gradient') === st.id
-                          ? 'border-purple-400 bg-purple-600 text-white font-semibold shadow'
-                          : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
-                      }`}
-                    >
-                      {st.label}
-                    </button>
-                  ))}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateConfig({ showJoinButton: !config.showJoinButton });
+                  }}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-mono border transition-colors ${
+                    config.showJoinButton
+                      ? 'bg-purple-600 border-purple-500 text-white font-medium shadow-sm'
+                      : 'bg-white/5 border-white/10 text-white/40'
+                  }`}
+                >
+                  CTA: {config.showJoinButton ? 'ACTIVE' : 'OFF'}
+                </button>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['cta'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
                 </div>
               </div>
             </div>
+
+            {!collapsed['cta'] && (
+              <div className="space-y-3 animate-fadeIn">
+                {/* Fields Grid */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-xs font-mono text-white/60">Button Title Text</span>
+                      <input
+                        type="text"
+                        value={config.joinButtonText || ''}
+                        onChange={(e) => updateConfig({ joinButtonText: e.target.value })}
+                        placeholder="e.g. Click to Join"
+                        className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-xs font-mono text-white/60">Subtext / Community Tag</span>
+                      <input
+                        type="text"
+                        value={config.joinButtonSubtext || ''}
+                        onChange={(e) => updateConfig({ joinButtonSubtext: e.target.value })}
+                        placeholder="e.g. discord.gg/chef or 1,420+ Members"
+                        className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-xs font-mono text-white/60">Destination Invite Link</span>
+                      <input
+                        type="text"
+                        value={config.joinButtonUrl || ''}
+                        onChange={(e) => updateConfig({ joinButtonUrl: e.target.value })}
+                        placeholder="https://discord.gg/..."
+                        className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-xs font-mono text-white/60">Status Pill Badge (optional)</span>
+                      <input
+                        type="text"
+                        value={config.joinButtonBadge || ''}
+                        onChange={(e) => updateConfig({ joinButtonBadge: e.target.value })}
+                        placeholder="ONLINE / VERIFIED / JOIN"
+                        className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Icon Selector */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-mono text-white/60">Button Icon</span>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                      {[
+                        { id: 'discord', label: 'Discord', icon: <PlatformIcon iconKey="discord" size={16} /> },
+                        { id: 'sparkles', label: 'Sparkles', icon: <Sparkles className="w-3.5 h-3.5" /> },
+                        { id: 'users', label: 'Community', icon: <Users className="w-3.5 h-3.5" /> },
+                        { id: 'flame', label: 'Flame', icon: <Flame className="w-3.5 h-3.5" /> },
+                        { id: 'rocket', label: 'Rocket', icon: <Rocket className="w-3.5 h-3.5" /> },
+                        { id: 'link', label: 'Link', icon: <LinkIcon className="w-3.5 h-3.5" /> },
+                      ].map((ic) => (
+                        <button
+                          key={ic.id}
+                          onClick={() => updateConfig({ joinButtonIcon: ic.id as any })}
+                          className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-mono border transition-all ${
+                            (config.joinButtonIcon || 'discord') === ic.id
+                              ? 'border-purple-400 bg-purple-600 text-white font-semibold shadow'
+                              : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
+                          }`}
+                        >
+                          {ic.icon}
+                          <span className="text-[11px] truncate">{ic.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Style Selector */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-mono text-white/60">Visual Theme</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      {[
+                        { id: 'glow-gradient', label: 'Gradient Glow' },
+                        { id: 'glass-frost', label: 'Frosted Glass' },
+                        { id: 'neon-purple', label: 'Neon Purple' },
+                        { id: 'cyber-cyan', label: 'Cyber Cyan' },
+                        { id: 'minimal', label: 'Minimal Dark' },
+                      ].map((st) => (
+                        <button
+                          key={st.id}
+                          onClick={() => updateConfig({ joinButtonStyle: st.id as any })}
+                          className={`py-1.5 px-2 text-center rounded-xl text-xs font-mono border transition-all ${
+                            (config.joinButtonStyle || 'glow-gradient') === st.id
+                              ? 'border-purple-400 bg-purple-600 text-white font-semibold shadow'
+                              : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
+                          }`}
+                        >
+                          {st.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* 5. CUSTOM BADGES & PLACEMENT */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('badges')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-purple-400" />
+                <Shield className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span>Custom Badges & Placement</span>
               </h2>
-              <button
-                onClick={() => updateConfig({ glowBadges: !config.glowBadges })}
-                className={`px-2 py-0.5 rounded-md text-[11px] font-mono border transition-colors ${
-                  config.glowBadges
-                    ? 'bg-purple-600/30 border-purple-400 text-purple-200'
-                    : 'bg-white/5 border-white/10 text-white/40'
-                }`}
-              >
-                Badge Glow: {config.glowBadges ? 'ON' : 'OFF'}
-              </button>
-            </div>
-
-            {/* Placement Switcher */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-mono text-white/60">Badge Placement Position</span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {[
-                  { id: 'capsule', label: 'Capsule Pill' },
-                  { id: 'inline', label: 'Inline with Name' },
-                  { id: 'avatar-corner', label: 'Avatar Corner' },
-                  { id: 'vertical-pinned', label: 'Side Bar' },
-                ].map((pos) => (
-                  <button
-                    key={pos.id}
-                    onClick={() => updateConfig({ badgePosition: pos.id as any })}
-                    className={`py-1.5 px-2 text-center rounded-lg text-xs font-mono border transition-all ${
-                      config.badgePosition === pos.id
-                        ? 'border-purple-400 bg-purple-600 text-white font-semibold'
-                        : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
-                    }`}
-                  >
-                    {pos.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowBadgeModal(true);
+                  }}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1 transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Badge</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateConfig({ glowBadges: !config.glowBadges });
+                  }}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-mono border transition-colors ${
+                    config.glowBadges
+                      ? 'bg-purple-600/30 border-purple-400 text-purple-200'
+                      : 'bg-white/5 border-white/10 text-white/40'
+                  }`}
+                >
+                  Glow: {config.glowBadges ? 'ON' : 'OFF'}
+                </button>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['badges'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
               </div>
             </div>
 
-            {/* Badges Toggle Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {config.badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  onClick={() => toggleBadge(badge.id)}
-                  className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                    badge.enabled
-                      ? 'border-purple-500/50 bg-purple-500/10 text-white'
-                      : 'border-white/10 bg-white/[0.02] text-white/40 hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <img src={badge.file} alt={badge.name} className="w-4 h-4 object-contain shrink-0" />
-                    <span className="text-xs font-mono truncate">{badge.name}</span>
+            {!collapsed['badges'] && (
+              <div className="space-y-3 animate-fadeIn">
+                {/* Placement Switcher (Including Inline Capsule) */}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-mono text-white/60">Badge Placement Position</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                    {[
+                      { id: 'capsule', label: 'Capsule Pill' },
+                      { id: 'inline-capsule', label: 'Inline Capsule' },
+                      { id: 'inline', label: 'Inline Raw' },
+                      { id: 'avatar-corner', label: 'Avatar Corner' },
+                      { id: 'vertical-pinned', label: 'Side Bar' },
+                    ].map((pos) => (
+                      <button
+                        key={pos.id}
+                        onClick={() => updateConfig({ badgePosition: pos.id as any })}
+                        className={`py-1.5 px-1.5 text-center rounded-lg text-xs font-mono border transition-all ${
+                          config.badgePosition === pos.id
+                            ? 'border-purple-400 bg-purple-600 text-white font-semibold'
+                            : 'border-white/10 bg-white/[0.02] text-white/50 hover:bg-white/5'
+                        }`}
+                      >
+                        {pos.label}
+                      </button>
+                    ))}
                   </div>
-                  <div
-                    className={`w-3 h-3 rounded-full border flex items-center justify-center shrink-0 ${
-                      badge.enabled ? 'bg-purple-600 border-purple-500' : 'border-white/20'
-                    }`}
-                  />
                 </div>
-              ))}
-            </div>
+
+                {/* Badges Toggle Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {config.badges.map((badge) => (
+                    <div
+                      key={badge.id}
+                      onClick={() => toggleBadge(badge.id)}
+                      className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        badge.enabled
+                          ? 'border-purple-500/50 bg-purple-500/10 text-white'
+                          : 'border-white/10 bg-white/[0.02] text-white/40 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
+                        <img src={badge.file} alt={badge.name} className="w-4 h-4 object-contain shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <span className="text-xs font-mono truncate">{badge.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                        {badge.id.startsWith('badge_') && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeBadge(badge.id);
+                            }}
+                            className="p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-colors"
+                            title="Delete custom badge"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                        <div
+                          className={`w-3 h-3 rounded-full border flex items-center justify-center shrink-0 ${
+                            badge.enabled ? 'bg-purple-600 border-purple-500' : 'border-white/20'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
-          {/* 5. REDIRECT BUTTONS (LOGOS & ORDER RECORDER) */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          {/* 6. REDIRECT BUTTONS (LOGOS & ORDER RECORDER) */}
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('logos')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-purple-400" />
+                <Layers className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span>Redirect Buttons</span>
               </h2>
 
-              <button
-                onClick={openAddButtonModal}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-mono text-white shadow-md transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Button</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAddButtonModal();
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-xs font-mono text-white shadow-md transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Button</span>
+                </button>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['logos'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
+              </div>
             </div>
+
+            {!collapsed['logos'] && (
+              <div className="space-y-3 animate-fadeIn">
 
             {/* Logo Sizing & Dock Bar Suite */}
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-3.5">
@@ -1521,196 +1767,367 @@ export function Dashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </section>
+
+          {/* 7. CRYPTO WALLET BUTTONS (COPY-TO-ADDRESS ONLY) */}
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('crypto')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
+              <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
+                <Coins className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                <span>Crypto Wallet Buttons</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 lowercase">
+                  {(config.cryptoButtons || []).filter((c) => c.enabled).length} active
+                </span>
+              </h2>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCryptoModal(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-xs font-mono text-white shadow-md transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Coin</span>
+                </button>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['crypto'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+
+            {!collapsed['crypto'] && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 text-[11px] font-mono text-purple-200/80 leading-relaxed">
+                  💡 <span className="font-semibold text-purple-300">Copy-to-Address only:</span> When visitors click these coins on your card, your wallet address copies directly to their clipboard with a visual "Copied!" notification (no external redirect).
+                </div>
+
+                <div className="space-y-2">
+                  {(config.cryptoButtons || []).map((coin) => (
+                    <div
+                      key={coin.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-[130px]">
+                        <div className="w-8 h-8 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center shrink-0">
+                          <PlatformIcon iconKey={coin.coinKey as PlatformKey} size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-mono font-semibold text-white truncate">{coin.name}</div>
+                          <div className="text-[10px] font-mono text-purple-400 uppercase tracking-wider">{coin.coinKey}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={coin.address}
+                          onChange={(e) => updateCryptoButton(coin.id, { address: e.target.value })}
+                          placeholder={`Enter ${coin.name} address (e.g. 0x... / bc1...)`}
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs font-mono text-white placeholder-white/20 outline-none focus:border-purple-400/50"
+                        />
+                        {coin.address && (
+                          <button
+                            type="button"
+                            onClick={() => handleTestCopyCrypto(coin.id, coin.address)}
+                            className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] font-mono text-white/70 hover:text-white border border-white/10 shrink-0 flex items-center gap-1"
+                            title="Test Clipboard Copy"
+                          >
+                            {copiedCryptoTest === coin.id ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-400 font-bold">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Test</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleCryptoButton(coin.id)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all ${
+                            coin.enabled
+                              ? 'bg-purple-600 border-purple-500 text-white font-medium shadow-sm'
+                              : 'bg-white/5 border-white/10 text-white/40'
+                          }`}
+                        >
+                          {coin.enabled ? 'ACTIVE' : 'OFF'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeCryptoButton(coin.id)}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/40 hover:text-rose-300 border border-white/10 transition-colors"
+                          title="Delete Coin"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
-          {/* 6. MAIN PAGE SHOWCASE & LO-FI MUSIC STUDIO */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          {/* 8. MAIN PAGE SHOWCASE & WORKS */}
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('showcase')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
               <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <FolderGit2 className="w-4 h-4 text-purple-400" />
+                <FolderGit2 className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span>Main Page Showcase & Works</span>
               </h2>
 
-              <button
-                onClick={() => updateConfig({ showPageShowcase: !config.showPageShowcase })}
-                className={`px-3 py-1 rounded-xl text-xs font-mono border transition-colors ${
-                  config.showPageShowcase
-                    ? 'bg-purple-600 border-purple-500 text-white'
-                    : 'bg-white/5 border-white/10 text-white/40'
-                }`}
-              >
-                Page Showcase: {config.showPageShowcase ? 'ENABLED' : 'DISABLED'}
-              </button>
-            </div>
-
-            {/* Showcase Title & Subtitle */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <span className="text-xs font-mono text-white/60">Section Title</span>
-                <input
-                  type="text"
-                  value={config.showcaseTitle || ''}
-                  onChange={(e) => updateConfig({ showcaseTitle: e.target.value })}
-                  placeholder="Portfolio & Arsenal"
-                  className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-xs font-mono text-white/60">Section Subtitle</span>
-                <input
-                  type="text"
-                  value={config.showcaseSubtitle || ''}
-                  onChange={(e) => updateConfig({ showcaseSubtitle: e.target.value })}
-                  placeholder="Selected works, interactive modules & tech stack"
-                  className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Background Lo-Fi Player Controls */}
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-white/80 flex items-center gap-1.5">
-                  <Music className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Interactive Lo-Fi Synthesizer / Audio Deck</span>
-                </span>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => updateConfig({ enableMusicPlayer: !config.enableMusicPlayer })}
-                  className={`px-2.5 py-0.5 rounded-md text-[11px] font-mono border ${
-                    config.enableMusicPlayer ? 'bg-purple-600 border-purple-500 text-white' : 'bg-white/5 text-white/40'
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateConfig({ showPageShowcase: !config.showPageShowcase });
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors ${
+                    config.showPageShowcase
+                      ? 'bg-purple-600 border-purple-500 text-white'
+                      : 'bg-white/5 border-white/10 text-white/40'
                   }`}
                 >
-                  {config.enableMusicPlayer ? 'PLAYER ON' : 'OFF'}
+                  {config.showPageShowcase ? 'ENABLED' : 'DISABLED'}
                 </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={config.musicTrackTitle || ''}
-                  onChange={(e) => updateConfig({ musicTrackTitle: e.target.value })}
-                  placeholder="Track Title"
-                  className="px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                />
-                <input
-                  type="text"
-                  value={config.musicTrackArtist || ''}
-                  onChange={(e) => updateConfig({ musicTrackArtist: e.target.value })}
-                  placeholder="Artist Name"
-                  className="px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
-                />
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['showcase'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
               </div>
             </div>
 
-            {/* Projects Manager Header & Button */}
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-xs font-mono text-white/70">Featured Projects List</span>
-              <button
-                onClick={openAddProjectModal}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-600/80 hover:bg-purple-600 text-white text-xs font-mono shadow-sm"
-              >
-                <Plus className="w-3 h-3" />
-                <span>Add Project</span>
-              </button>
-            </div>
-
-            {/* Projects List */}
-            <div className="space-y-2">
-              {(config.projects || []).map((proj) => (
-                <div
-                  key={proj.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-colors gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold font-mono text-white truncate">{proj.title}</span>
-                      <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300">
-                        {proj.tag}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-white/40 font-mono truncate mt-0.5">{proj.description}</p>
+            {!collapsed['showcase'] && (
+              <div className="space-y-3 animate-fadeIn">
+                {/* Showcase Title & Subtitle */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <span className="text-xs font-mono text-white/60">Section Title</span>
+                    <input
+                      type="text"
+                      value={config.showcaseTitle || ''}
+                      onChange={(e) => updateConfig({ showcaseTitle: e.target.value })}
+                      placeholder="Portfolio & Arsenal"
+                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                    />
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => openEditProjectModal(proj)}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-purple-600/30 text-white/60 hover:text-purple-300 border border-white/10"
-                      title="Edit Project"
+                  <div className="space-y-1">
+                    <span className="text-xs font-mono text-white/60">Section Subtitle</span>
+                    <input
+                      type="text"
+                      value={config.showcaseSubtitle || ''}
+                      onChange={(e) => updateConfig({ showcaseSubtitle: e.target.value })}
+                      placeholder="Selected works, interactive modules & tech stack"
+                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Projects Manager Header & Button */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs font-mono text-white/70">Featured Projects List</span>
+                  <button
+                    type="button"
+                    onClick={openAddProjectModal}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-600/80 hover:bg-purple-600 text-white text-xs font-mono shadow-sm"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Project</span>
+                  </button>
+                </div>
+
+                {/* Projects List */}
+                <div className="space-y-2">
+                  {(config.projects || []).map((proj) => (
+                    <div
+                      key={proj.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-colors gap-3"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold font-mono text-white truncate">{proj.title}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300">
+                            {proj.tag}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-white/40 font-mono truncate mt-0.5">{proj.description}</p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => openEditProjectModal(proj)}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-purple-600/30 text-white/60 hover:text-purple-300 border border-white/10"
+                          title="Edit Project"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeProject(proj.id)}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/40 hover:text-rose-300 border border-white/10"
+                          title="Delete Project"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 9. BACKGROUND AUDIO PLAYER / LO-FI DECK */}
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('audio')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
+              <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
+                <Music className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                <span>Background Audio Player & Lo-Fi Deck</span>
+              </h2>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateConfig({ enableMusicPlayer: !config.enableMusicPlayer });
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors ${
+                    config.enableMusicPlayer
+                      ? 'bg-purple-600 border-purple-500 text-white'
+                      : 'bg-white/5 border-white/10 text-white/40'
+                  }`}
+                >
+                  {config.enableMusicPlayer ? 'ENABLED' : 'DISABLED'}
+                </button>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['audio'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+
+            {!collapsed['audio'] && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <span className="text-xs font-mono text-white/60">Now Playing Title</span>
+                    <input
+                      type="text"
+                      value={config.musicTrackTitle || ''}
+                      onChange={(e) => updateConfig({ musicTrackTitle: e.target.value })}
+                      placeholder="Track Title"
+                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs font-mono text-white/60">Artist / Channel</span>
+                    <input
+                      type="text"
+                      value={config.musicTrackArtist || ''}
+                      onChange={(e) => updateConfig({ musicTrackArtist: e.target.value })}
+                      placeholder="Artist Name"
+                      className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-white font-mono outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 10. STUDIO SECURITY & MASTER PASSPHRASE */}
+          <section className="p-3 sm:p-4 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-3 transition-all">
+            <div
+              onClick={() => toggleSection('security')}
+              className="flex items-center justify-between border-b border-white/5 pb-2 cursor-pointer select-none group"
+            >
+              <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                <span>Studio Security & Master Passphrase</span>
+              </h2>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  High Entropy
+                </span>
+                <div className={`p-1 rounded-lg bg-white/5 text-white/60 group-hover:text-white transition-transform ${collapsed['security'] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+
+            {!collapsed['security'] && (
+              <div className="space-y-3 animate-fadeIn">
+                <p className="text-xs font-mono text-white/50 leading-relaxed">
+                  This ultra-long master passphrase locks the secret <code className="text-purple-300 font-bold bg-white/5 px-1 rounded">/&</code> dashboard route so that nobody on the internet can guess it.
+                </p>
+
+                <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-white/70">Current Active Master Passphrase:</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyPassword}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/40 text-xs font-mono transition-all shadow-sm"
+                    >
+                      {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedKey ? '✓ Copied to Clipboard!' : 'Copy Key'}</span>
                     </button>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type={showPasswordText ? 'text' : 'password'}
+                      readOnly
+                      value={config.adminPassword || 'Chef!992831#Zyo$Quantum*Obsidian&Vault%Nexus'}
+                      className="w-full px-3.5 py-2 pr-10 rounded-xl bg-black/60 border border-purple-500/30 text-xs text-purple-200 font-mono select-all outline-none"
+                    />
                     <button
-                      onClick={() => removeProject(proj.id)}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/40 hover:text-rose-300 border border-white/10"
-                      title="Delete Project"
+                      type="button"
+                      onClick={() => setShowPasswordText(!showPasswordText)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                      title={showPasswordText ? 'Hide Password' : 'Show Password'}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      {showPasswordText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
 
-          {/* 7. STUDIO SECURITY & MASTER PASSPHRASE */}
-          <section className="p-4 sm:p-5 rounded-2xl bg-[#0e0e14] border border-white/10 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-              <h2 className="text-xs font-mono uppercase tracking-wider font-semibold text-purple-300 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-purple-400" />
-                <span>Studio Security & Master Passphrase</span>
-              </h2>
-              <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                High Entropy Lock
-              </span>
-            </div>
-
-            <p className="text-xs font-mono text-white/50 leading-relaxed">
-              This ultra-long master passphrase locks the secret <code className="text-purple-300 font-bold bg-white/5 px-1 rounded">/&</code> dashboard route so that nobody on the internet can guess it.
-            </p>
-
-            <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-white/70">Current Active Master Passphrase:</span>
-                <button
-                  type="button"
-                  onClick={handleCopyPassword}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/40 text-xs font-mono transition-all shadow-sm"
-                >
-                  {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedKey ? '✓ Copied to Clipboard!' : 'Copy Key'}</span>
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGenerateLongKey}
+                    className="flex-1 py-2 px-4 rounded-xl bg-purple-600/20 hover:bg-purple-600/40 border border-purple-400/40 text-purple-200 text-xs font-mono flex items-center justify-center gap-2 transition-all shadow-sm"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Generate New 48-Char Ultra Master Key</span>
+                  </button>
+                </div>
               </div>
-
-              <div className="relative">
-                <input
-                  type={showPasswordText ? 'text' : 'password'}
-                  readOnly
-                  value={config.adminPassword || 'Chef!992831#Zyo$Quantum*Obsidian&Vault%Nexus'}
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-black/60 border border-purple-500/30 text-xs text-purple-200 font-mono select-all outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordText(!showPasswordText)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                  title={showPasswordText ? 'Hide Password' : 'Show Password'}
-                >
-                  {showPasswordText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleGenerateLongKey}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-purple-600/20 hover:bg-purple-600/40 border border-purple-400/40 text-purple-200 text-xs font-mono flex items-center justify-center gap-2 transition-all shadow-sm"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Generate New 48-Char Ultra Master Key</span>
-              </button>
-            </div>
+            )}
           </section>
         </div>
 
@@ -1977,6 +2394,186 @@ export function Dashboard() {
                   className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-mono text-white font-medium shadow-md transition-all"
                 >
                   {editingProjectId ? 'Save Changes' : 'Add Project'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL FOR ADDING CUSTOM BADGE */}
+      {showBadgeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl p-6 bg-[#0e0e14] border border-white/15 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-sm font-bold font-mono text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span>Add Custom Badge</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowBadgeModal(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white/50 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBadgeModal} className="space-y-4">
+              <div className="space-y-1">
+                <span className="text-xs font-mono text-white/60">Badge Name</span>
+                <input
+                  type="text"
+                  required
+                  value={newBadgeName}
+                  onChange={(e) => setNewBadgeName(e.target.value)}
+                  placeholder="e.g. VIP Member, Solana Dev, OG"
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none font-mono"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono text-white/60">Badge Icon (Upload or URL)</span>
+                  {newBadgeFile && (
+                    <div className="w-7 h-7 rounded bg-black/60 p-1 border border-purple-500/40 flex items-center justify-center">
+                      <img src={newBadgeFile} alt="badge preview" className="w-5 h-5 object-contain" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={newBadgeFile}
+                    onChange={(e) => setNewBadgeFile(e.target.value)}
+                    placeholder="https://... PNG / SVG URL"
+                    className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none font-mono"
+                  />
+                  <label className="cursor-pointer px-3 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-400/40 text-xs font-mono text-purple-300 shrink-0 flex items-center gap-1.5 transition-colors">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*,.svg"
+                      className="hidden"
+                      onChange={handleBadgeFileUpload}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowBadgeModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-xs font-mono text-white/50 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-mono text-white font-medium shadow-md transition-all"
+                >
+                  Add Badge
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL FOR ADDING CRYPTO BUTTON */}
+      {showCryptoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl p-6 bg-[#0e0e14] border border-white/15 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-sm font-bold font-mono text-white flex items-center gap-2">
+                <Coins className="w-4 h-4 text-purple-400" />
+                <span>Add Crypto Wallet Button</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowCryptoModal(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white/50 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCryptoModal} className="space-y-4">
+              <div className="space-y-1.5">
+                <span className="text-xs font-mono text-white/60">Select Cryptocurrency</span>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[
+                    { key: 'btc', name: 'Bitcoin' },
+                    { key: 'eth', name: 'Ethereum' },
+                    { key: 'sol', name: 'Solana' },
+                    { key: 'ltc', name: 'Litecoin' },
+                    { key: 'usdt', name: 'Tether' },
+                    { key: 'bnb', name: 'BNB' },
+                    { key: 'xrp', name: 'XRP' },
+                    { key: 'doge', name: 'Dogecoin' },
+                    { key: 'ada', name: 'Cardano' },
+                    { key: 'matic', name: 'Polygon' },
+                  ].map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => {
+                        setNewCryptoCoinKey(c.key);
+                        setNewCryptoName(c.name);
+                      }}
+                      className={`p-2 rounded-xl border flex flex-col items-center gap-1 transition-all ${
+                        newCryptoCoinKey === c.key
+                          ? 'bg-purple-600 text-white border-purple-400 shadow-md scale-105'
+                          : 'bg-white/5 hover:bg-white/10 text-white/70 border-white/10'
+                      }`}
+                    >
+                      <PlatformIcon iconKey={c.key as PlatformKey} size={20} />
+                      <span className="text-[10px] font-mono font-medium truncate">{c.key.toUpperCase()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-mono text-white/60">Display Name</span>
+                <input
+                  type="text"
+                  required
+                  value={newCryptoName}
+                  onChange={(e) => setNewCryptoName(e.target.value)}
+                  placeholder="e.g. Bitcoin / Main Wallet"
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-mono text-white/60">Wallet Address (To Copy on Click)</span>
+                <input
+                  type="text"
+                  required
+                  value={newCryptoAddress}
+                  onChange={(e) => setNewCryptoAddress(e.target.value)}
+                  placeholder="Paste your wallet address here..."
+                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white outline-none font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowCryptoModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-xs font-mono text-white/50 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-mono text-white font-medium shadow-md transition-all"
+                >
+                  Create Crypto Button
                 </button>
               </div>
             </form>

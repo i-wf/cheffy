@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, memo } from 'react';
 import { MapPin, Eye, ArrowRight, Sparkles, Users, Flame, Rocket, Link as LinkIcon } from 'lucide-react';
 import { useCustomization, type FontFamilyType } from '../context/CustomizationContext';
 import { VenomDecoration } from './VenomDecoration';
+import { GhostDecoration } from './GhostDecoration';
 import { PlatformIcon } from './icons/PlatformIcons';
 
 function getJoinBtnStyle(style?: string): string {
@@ -68,6 +69,9 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
   const primaryGlareRef = useRef<HTMLDivElement>(null);
   const separatedCardRef = useRef<HTMLDivElement>(null);
   const separatedGlareRef = useRef<HTMLDivElement>(null);
+
+  // Crypto copy-to-clipboard feedback
+  const [copiedCryptoId, setCopiedCryptoId] = useState<string | null>(null);
 
   const [bannerError, setBannerError] = useState(false);
 
@@ -363,9 +367,17 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
 
   const activeBadges = config.badges.filter((b) => b.enabled);
   const activeLogos = config.logoButtons.filter((l) => l.enabled);
+  const activeCryptos = (config.cryptoButtons || []).filter((c) => c.enabled && c.address);
   const logoBtnSize = config.logoSize || 72;
   const avatarSize = config.avatarSize || 104;
   const isSeparated = config.cardLayoutType === 'separated';
+  const isLandscape = config.cardLayoutType === 'landscape';
+
+  const handleCryptoCopy = (crypto: { id: string; address: string }) => {
+    navigator.clipboard.writeText(crypto.address).catch(() => {});
+    setCopiedCryptoId(crypto.id);
+    setTimeout(() => setCopiedCryptoId(null), 1800);
+  };
 
   const bannerSrc = (config.bannerUrl && !config.bannerUrl.startsWith('blob:')) ? config.bannerUrl : '/back.png';
 
@@ -399,18 +411,180 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
   };
 
   return (
-    <div style={{ perspective: 1200 }} className="relative flex flex-col items-center justify-center p-2 sm:p-4 w-full">
+    <div style={{ perspective: 1200 }} className="relative flex flex-col items-center justify-center p-1 sm:p-4 w-full max-w-full">
       <div
         style={{
-          width: `${config.cardWidth}px`,
+          width: isLandscape ? 'min(94vw, 620px)' : `${config.cardWidth}px`,
+          maxWidth: 'calc(100vw - 16px)',
           fontFamily: getFontFamily(config.fontFamily),
           color: config.textColor,
         }}
         className="relative flex flex-col gap-4 select-none items-center"
       >
-        {/* PRIMARY CARD (Profile Info, Banner, Avatar, Bio, Widgets) */}
-        <div
-          ref={primaryCardRef}
+
+        {/* ═══════════════ LANDSCAPE CARD LAYOUT ═══════════════ */}
+        {isLandscape ? (
+          <div
+            ref={primaryCardRef}
+            style={{
+              width: '100%',
+              willChange: 'transform',
+              transformStyle: 'preserve-3d',
+              ...cardBackgroundStyle,
+            }}
+            className={`relative overflow-visible transition-shadow duration-300 ${getTemplateContainerStyles()}`}
+          >
+            {/* Glare overlay */}
+            <div
+              ref={primaryGlareRef}
+              className="pointer-events-none absolute inset-0 z-40 rounded-3xl transition-opacity duration-150"
+              style={{
+                background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), transparent)',
+                opacity: 0,
+                mixBlendMode: 'overlay',
+              }}
+            />
+
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-5 p-4 sm:p-6 relative z-10 text-center sm:text-left">
+              {/* Landscape Avatar (Overlapping left edge on desktop, centered on mobile) */}
+              <div className="relative group shrink-0 sm:-ml-3">
+                {config.profileDecoration === 'venom' && (
+                  <VenomDecoration size={Math.round(avatarSize * 1.45)} />
+                )}
+                {config.profileDecoration === 'ghost' && (
+                  <GhostDecoration size={Math.round(avatarSize * 1.15)} />
+                )}
+                <div
+                  style={{ width: `${avatarSize}px`, height: `${avatarSize}px` }}
+                  className="rounded-full p-1 bg-gradient-to-b from-white/30 via-white/10 to-black/60 shadow-2xl overflow-hidden border border-white/20 relative z-10"
+                >
+                  <img
+                    src={config.avatarUrl || '/pfp.jpg'}
+                    alt={config.username}
+                    className="w-full h-full rounded-full object-cover transition-transform duration-200 group-hover:scale-105"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/pfp.jpg'; }}
+                  />
+                </div>
+                <div className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#070709] shadow-md flex items-center justify-center z-30">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                </div>
+              </div>
+
+              {/* Name, Description, Icons - Right side */}
+              <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                {/* Name + Verified + Badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1
+                    className={`text-xl sm:text-2xl font-bold tracking-tight ${
+                      config.usernameEffect === 'rainbow' ? 'animate-rainbow' : ''
+                    } ${config.usernameEffect === 'glitch' ? 'animate-fuzzy' : ''}`}
+                    style={{
+                      color: config.usernameEffect === 'rainbow' ? undefined : config.textColor,
+                      filter: config.glowUsername
+                        ? config.usernameEffect === 'glow'
+                          ? 'drop-shadow(0 0 16px rgba(168,85,247,0.85))'
+                          : 'drop-shadow(0 0 12px rgba(255,255,255,0.45))'
+                        : config.usernameEffect === 'glow'
+                        ? 'drop-shadow(0 0 14px rgba(168,85,247,0.8))'
+                        : 'none',
+                    }}
+                  >
+                    {config.usernameEffect === 'typewriter' ? (
+                      <>{displayedText}<span className={`inline-block font-mono text-purple-400 font-light ${cursorVisible ? 'opacity-100' : 'opacity-0'}`}>|</span></>
+                    ) : config.username}
+                  </h1>
+
+                  <svg className="w-5 h-5 shrink-0" style={{ color: config.verifiedBadgeColor || '#22d3ee', filter: `drop-shadow(0 0 8px ${config.verifiedBadgeColor || '#22d3ee'}80)` }} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+
+                  {/* Badges in Landscape (Capsule or inline) */}
+                  {config.badgePosition === 'inline-capsule' || config.badgePosition === 'capsule' ? (
+                    <div style={pillStyle} className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border backdrop-blur-md">
+                      {activeBadges.slice(0, 5).map((badge) => (
+                        <img key={badge.id} src={badge.file} alt={badge.name} className="w-4 h-4 object-contain hover:scale-125 transition-transform"
+                          style={{ filter: config.glowBadges ? `drop-shadow(0 0 6px ${config.cardGlowColor || '#ffffff'})` : 'none' }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    activeBadges.slice(0, 4).map((badge) => (
+                      <img key={badge.id} src={badge.file} alt={badge.name} className="w-5 h-5 object-contain hover:scale-125 transition-transform"
+                        style={{ filter: config.glowBadges ? `drop-shadow(0 0 6px ${config.cardGlowColor || '#ffffff'})` : 'none' }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ))
+                  )}
+                </div>
+
+                {/* Description */}
+                <p className="text-sm opacity-80 truncate" style={{ color: config.textColor }}>
+                  {config.descriptionEffect === 'typewriter' ? (
+                    <>{displayedDesc}<span className={`inline-block font-mono text-purple-400 font-light ml-0.5 ${descCursorVisible ? 'opacity-100' : 'opacity-0'}`}>|</span></>
+                  ) : config.description}
+                </p>
+
+                {/* Logo Icons Row */}
+                <div className="flex items-center gap-3 flex-wrap mt-1">
+                  {activeLogos.map((logo) => (
+                    <div key={logo.id} className="relative group">
+                      <a
+                        href={logo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center transition-all duration-200 hover:scale-115 active:scale-95 text-white/90 hover:text-white"
+                        style={{
+                          width: `${Math.min(logoBtnSize, 36)}px`,
+                          height: `${Math.min(logoBtnSize, 36)}px`,
+                          filter: config.glowLogoButtons
+                            ? 'drop-shadow(0 0 10px rgba(255,255,255,0.4))'
+                            : 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                        }}
+                      >
+                        {logo.iconKey && logo.iconKey !== 'custom' ? (
+                          <PlatformIcon iconKey={logo.iconKey} customFile={logo.file} size={Math.min(Math.round(logoBtnSize * 0.7), 28)} className="transition-transform group-hover:scale-110" />
+                        ) : logo.file ? (
+                          <img src={logo.file} alt={logo.name} className="w-full h-full object-contain filter drop-shadow p-0.5" />
+                        ) : (
+                          <PlatformIcon iconKey="link" size={24} />
+                        )}
+                      </a>
+                      <div
+                        style={{ transform: 'translate3d(-50%, 0, 50px)' }}
+                        className="absolute -top-9 left-1/2 px-2 py-0.5 rounded-lg bg-[#0c0c12]/95 border border-white/20 text-[10px] font-mono text-white whitespace-nowrap shadow-[0_4px_16px_rgba(0,0,0,0.85)] pointer-events-none opacity-0 group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-200 z-[100] backdrop-blur-md flex flex-col items-center"
+                      >
+                        <span className="font-semibold">{logo.name}</span>
+                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rotate-45 bg-[#0c0c12] border-r border-b border-white/20" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Bar: View Count + Location */}
+            <div className="flex items-center gap-3 px-6 pb-4 text-xs font-mono opacity-70">
+              {config.showViewCount && (
+                <div className="flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>{config.viewCount || '1.2K'}</span>
+                </div>
+              )}
+              {config.showViewCount && config.location && (
+                <span className="text-white/30">|</span>
+              )}
+              {config.location && (
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="uppercase tracking-wider">{config.location}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            ref={primaryCardRef}
           style={{
             width: '100%',
             minHeight: config.cardHeight > 0 ? `${config.cardHeight}px` : undefined,
@@ -526,6 +700,10 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
                 {/* Discord Venom Symbiote Decoration (Scales dynamically) */}
                 {config.profileDecoration === 'venom' && (
                   <VenomDecoration size={Math.round(avatarSize * 1.45)} />
+                )}
+                {/* Ghost Mascot Decoration (Matching screenshot) */}
+                {config.profileDecoration === 'ghost' && (
+                  <GhostDecoration size={Math.round(avatarSize * 1.15)} />
                 )}
 
                 {/* Avatar Circle with Customizable Size */}
@@ -657,6 +835,35 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
                   </div>
                 </div>
               ))}
+
+              {/* Inline Capsule Badges (Image / Request: Capsule inline next to name) */}
+              {config.badgePosition === 'inline-capsule' && activeBadges.length > 0 && (
+                <div
+                  style={pillStyle}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border backdrop-blur-md transition-all duration-300 ml-1.5 align-middle"
+                >
+                  {activeBadges.map((badge) => (
+                    <div key={badge.id} className="relative group inline-block">
+                      <img
+                        src={badge.file}
+                        alt={badge.name}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                        className="w-4 h-4 object-contain filter drop-shadow hover:scale-125 transition-transform duration-150 cursor-pointer inline-block"
+                        style={{
+                          filter: config.glowBadges
+                            ? `drop-shadow(0 0 6px ${config.cardGlowColor || '#ffffff'})`
+                            : 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+                        }}
+                      />
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-black/90 border border-white/10 text-[9px] font-mono text-white whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                        {badge.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Dedicated Badges Pill / Capsule Container (Image 1: All in one rectangle / outliner) */}
@@ -749,7 +956,7 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
                   className="block hover:opacity-95 transition-opacity"
                 >
                   <img
-                    src={`https://discord.c99.nl/widget/theme-4/${config.discordId || '183234792534310912'}.png`}
+                    src={`https://discord.c99.nl/widget/theme-${config.discordTheme || 1}/${config.discordId || '183234792534310912'}.png`}
                     alt="Discord Presence"
                     loading="lazy"
                     className="w-full h-auto block"
@@ -848,8 +1055,12 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
                     </a>
 
                     {/* Hover Tooltip (NAME ONLY per media_1790425267391.png) */}
-                    <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#0e0e14]/95 border border-white/15 text-xs font-mono text-white whitespace-nowrap shadow-2xl pointer-events-none opacity-0 group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-200 z-50 flex items-center backdrop-blur-md">
-                      <span className="font-semibold text-white">{logo.name}</span>
+                    <div
+                      style={{ transform: 'translate3d(-50%, 0, 60px)' }}
+                      className="absolute -top-10 left-1/2 px-2.5 py-1 rounded-lg bg-[#0c0c12]/95 border border-white/20 text-xs font-mono text-white whitespace-nowrap shadow-[0_4px_20px_rgba(0,0,0,0.85)] pointer-events-none opacity-0 group-hover:opacity-100 group-hover:-translate-y-1.5 transition-all duration-200 z-[100] flex flex-col items-center backdrop-blur-md"
+                    >
+                      <span className="font-semibold text-white tracking-wide">{logo.name}</span>
+                      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#0c0c12] border-r border-b border-white/20" />
                     </div>
                   </div>
                 ))}
@@ -857,6 +1068,37 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
             )}
           </div>
         </div>
+        )}
+
+        {/* CRYPTO WALLET ADDRESS BUTTONS (Copy-to-clipboard, not links) */}
+        {activeCryptos.length > 0 && (
+          <div className="flex items-center justify-center gap-2.5 flex-wrap w-full px-2">
+            {activeCryptos.map((crypto) => (
+              <button
+                key={crypto.id}
+                onClick={() => handleCryptoCopy(crypto)}
+                className={`relative group flex items-center gap-2 px-3 py-2 rounded-xl border backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer ${
+                  copiedCryptoId === crypto.id
+                    ? 'border-emerald-400/60 bg-emerald-500/15 shadow-[0_0_16px_rgba(16,185,129,0.25)]'
+                    : 'border-white/15 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/25'
+                }`}
+              >
+                <PlatformIcon iconKey={crypto.coinKey} size={18} />
+                <span className="text-xs font-mono text-white/80 font-medium">
+                  {copiedCryptoId === crypto.id ? 'Copied!' : crypto.name}
+                </span>
+                {/* Tooltip with address preview */}
+                <div
+                  style={{ transform: 'translate3d(-50%, 0, 60px)' }}
+                  className="absolute -top-10 left-1/2 px-2.5 py-1 rounded-lg bg-[#0c0c12]/95 border border-white/20 text-[10px] font-mono text-white/90 whitespace-nowrap shadow-[0_4px_20px_rgba(0,0,0,0.85)] pointer-events-none opacity-0 group-hover:opacity-100 group-hover:-translate-y-1.5 transition-all duration-200 z-[100] backdrop-blur-md max-w-[220px] truncate flex flex-col items-center"
+                >
+                  <span>{crypto.address.slice(0, 10)}...{crypto.address.slice(-6)}</span>
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#0c0c12] border-r border-b border-white/20" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* SEPARATED CARDS TEMPLATE: Distinct standalone bottom card for logos and links */}
         {isSeparated && activeLogos.length > 0 && (
@@ -870,7 +1112,7 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
               padding: `${config.dockBarPadding ?? 20}px ${Math.round((config.dockBarPadding ?? 20) * 1.35)}px`,
               gap: `${config.dockBarGap ?? 20}px`,
             }}
-            className={`relative flex items-center justify-center flex-wrap transition-all duration-300 overflow-hidden ${getTemplateContainerStyles()}`}
+            className={`relative flex items-center justify-center flex-wrap transition-all duration-300 overflow-visible ${getTemplateContainerStyles()}`}
           >
             {/* Dynamic Specular Sheen Overlay for Separated Dock Card */}
             <div
@@ -919,8 +1161,12 @@ export const InteractiveProfileCard = memo(function InteractiveProfileCard() {
                 </a>
 
                 {/* Hover Tooltip (NAME ONLY per media_1790425267391.png) */}
-                <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#0e0e14]/95 border border-white/15 text-xs font-mono text-white whitespace-nowrap shadow-2xl pointer-events-none opacity-0 group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-200 z-50 flex items-center backdrop-blur-md">
-                  <span className="font-semibold text-white">{logo.name}</span>
+                <div
+                  style={{ transform: 'translate3d(-50%, 0, 60px)' }}
+                  className="absolute -top-10 left-1/2 px-2.5 py-1 rounded-lg bg-[#0c0c12]/95 border border-white/20 text-xs font-mono text-white whitespace-nowrap shadow-[0_4px_20px_rgba(0,0,0,0.85)] pointer-events-none opacity-0 group-hover:opacity-100 group-hover:-translate-y-1.5 transition-all duration-200 z-[100] flex flex-col items-center backdrop-blur-md"
+                >
+                  <span className="font-semibold text-white tracking-wide">{logo.name}</span>
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#0c0c12] border-r border-b border-white/20" />
                 </div>
               </div>
             ))}
